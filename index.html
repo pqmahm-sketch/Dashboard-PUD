@@ -178,15 +178,6 @@
 
 <main>
 
-  <div class="banner">
-    ⚠️ Dashboard ini disuntik langsung dari <b onclick="document.getElementById('qaList').classList.toggle('open')">Spreadsheet Database Pengerjaan PUD</b>. Ditemukan juga beberapa anomali data kecil (klik untuk lihat detail).
-    <ul class="qa-list" id="qaList">
-      <li>7 baris punya tanggal pengerjaan tidak wajar (tahun 1990 atau 2029) — kemungkinan salah input, perlu dicek manual.</li>
-      <li>Ada kode MD "HM" dan "&lt;not registered&gt;" yang tidak masuk daftar 29 Main Dealer resmi — kemungkinan typo atau data belum ter-mapping.</li>
-      <li>84 unit tercatat pindah wilayah pengerjaan (MD pelapor ≠ MD distribusi) — sudah ditandai di kolom Migrasi Status.</li>
-    </ul>
-  </div>
-
   <div class="filters">
     <div class="filter-group">
       <label class="fg-title">Wilayah</label>
