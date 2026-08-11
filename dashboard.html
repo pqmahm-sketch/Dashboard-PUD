@@ -128,6 +128,10 @@
   .rank-bar-track{flex:1 1 auto; min-width:120px; height:14px; background:#EEF0F3; border-radius:100px; overflow:hidden; position:relative;}
   .rank-bar-fill{height:100%; border-radius:100px; transition:width .35s ease;}
   .rank-pct{width:62px; text-align:right; font-weight:800; font-size:13.5px; font-family:'IBM Plex Mono',monospace; flex:none;}
+  .rank-legend{display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-top:12px; font-size:11px; color:var(--ink-soft);}
+  .rank-legend .lg-title{font-weight:700; text-transform:uppercase; letter-spacing:.4px; font-size:10px;}
+  .rank-legend .lg-group{display:flex; align-items:center; gap:6px;}
+  .rank-legend .lg-swatch{width:22px; height:10px; border-radius:100px;}
   table.matrix th, table.matrix td{padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle;}
   table.matrix th:last-child, table.matrix td:last-child{text-align:right;}
   table.matrix thead th{font-size:10.5px; text-transform:uppercase; color:var(--ink-soft); letter-spacing:.3px; border-bottom:2px solid var(--line);}
@@ -261,6 +265,14 @@
     <h3>Peringkat Achievement PUD per MD (terendah-tertinggi)</h3>
     <div class="sub">Persentase capaian (pengerjaan + deklarasi) per Main Dealer, sesuai filter aktif di atas</div>
     <div class="rank-scroll" id="rankList" style="margin-top:10px;"></div>
+    <div class="rank-legend">
+      <span class="lg-title">Legenda warna:</span>
+      <div class="lg-group"><span class="lg-swatch" style="background:#DC2626"></span>&lt; 50% — Perlu perhatian serius</div>
+      <div class="lg-group"><span class="lg-swatch" style="background:#F97316"></span>50–69% — Kurang</div>
+      <div class="lg-group"><span class="lg-swatch" style="background:#D6A93B"></span>70–90% — Mendekati target</div>
+      <div class="lg-group"><span class="lg-swatch" style="background:#16A34A"></span>&gt; 90% — Baik</div>
+      <div class="lg-group"><span class="lg-swatch" style="background:#D8DCE2"></span>0% — Belum ada progress</div>
+    </div>
   </div>
 
   <div class="card" style="margin-bottom:16px;">
@@ -370,9 +382,13 @@ let RAW_DATA = [{"n":"PUD AT4","f":"AT4","j":"CBU","md":"B10","mdp":"B10","rk":"
 const MD_NAMES = {"B10": "ITC", "B3Z": "CDN ACEH", "C10": "MA", "C3Z": "HYT", "D2Z": "CDN RIAU", "D3Z": "CDN BATAM", "E20": "SSP", "G01": "ASMO SUMSEL", "G02": "ASMO BKL", "G5Z": "ASP", "H2Z": "TDM", "I01": "ASMO JKT", "I3Z": "WMS", "J10": "DAM", "J20": "MSK", "K0Z": "ASMO JATENG", "L01": "ASMO YGY", "M2Z": "MPM SBY", "M3Z": "MPM MLG", "N01": "ASMO BALI", "N02": "ASMO NTB", "Q01": "ASMO KALBAR", "R4Z": "ASMO KALTIM 1", "R5Z": "ASMO KALTIM 2", "T10": "TRIO", "U10": "DAW", "V2Z": "AP", "W01": "ASMO SULSEL", "Z11": "ASMO JYP", "AHM": "AHM (Head Office)", "HM": "HM (perlu verifikasi)", "<not registered>": "Tidak Terdaftar (perlu verifikasi)"};
 const OTHER_TYPES = [{"name": "PUDV1", "count": 183894}, {"name": "PUDAP", "count": 31572}, {"name": "PUDC", "count": 4953}, {"name": "PUDP", "count": 3930}, {"name": "PUDSS", "count": 1700}, {"name": "PUD CRF250", "count": 210}, {"name": "PUD CT125", "count": 120}, {"name": "PUD CB500", "count": 79}, {"name": "PUD AT3", "count": 61}];
 const MD_REGION = {"B10": "1", "B3Z": "1", "D2Z": "1", "D3Z": "1", "C10": "1", "C3Z": "1", "E20": "1", "G01": "1", "G02": "1", "G5Z": "1", "H2Z": "1", "I3Z": "2", "I01": "2", "J10": "2", "J20": "2", "K0Z": "2", "L01": "2", "M2Z": "2", "M3Z": "2", "N01": "2", "N02": "2", "Q01": "3", "R4Z": "3", "R5Z": "3", "T10": "3", "U10": "3", "V2Z": "3", "W01": "3", "Z11": "3"};
-/* LOV Main Dealer tidak menampilkan AHM Head Office, HM, dan kode yang belum terdaftar (perlu verifikasi) */
-const EXCLUDED_MD = ['AHM','HM','<not registered>'];
-const VISIBLE_MD_CODES = Object.keys(MD_NAMES).filter(c=>!EXCLUDED_MD.includes(c));
+/* LOV Main Dealer hanya menampilkan 29 MD resmi (AHM/HM/<not registered> tidak selectable),
+   TAPI record dari MD tak terdaftar tetap masuk hitungan default supaya total capaian sama
+   dengan spreadsheet sumber. */
+const UNREGISTERED_MD = ['AHM','HM','<not registered>'];
+const EXCLUDED_MD = UNREGISTERED_MD; /* alias lama, dipertahankan untuk kompatibilitas */
+const VISIBLE_MD_CODES = Object.keys(MD_NAMES).filter(c=>!UNREGISTERED_MD.includes(c));
+const ALL_MD_CODES = Object.keys(MD_NAMES);
 
 /* ================= LIVE SYNC — SPREADSHEET DATABASE PENGERJAAN PUD ================= */
 const SHEET_ID = '1h0x6iGnYsquSueq8gKy9pIEXNZ0HqwYcq3BlSgTcu6w';
@@ -530,7 +546,9 @@ const STATUS_SHORT = {
   'Unit motor hancur akibat bencana sehingga terbengkalai dan tidak digunakan lagi':'Rusak/Bencana',
 };
 
-let activeFilters = { region:'all', mds:new Set(VISIBLE_MD_CODES), puds:new Set(PUD_FOCUS.map(p=>p.label)) };
+/* Default: semua MD (termasuk MD tak terdaftar) ikut aktif. Kalau user cek/uncheck di LOV,
+   hanya 29 MD resmi yang tampak — MD tak terdaftar tetap ikut kecuali user "Kosongkan" total. */
+let activeFilters = { region:'all', mds:new Set(ALL_MD_CODES), puds:new Set(PUD_FOCUS.map(p=>p.label)) };
 /* Periode khusus untuk bagian "Informasi Deklarasi": '2025' | '2026' | 'all' */
 let dekPeriod = '2026';
 let charts = {};
@@ -754,16 +772,19 @@ function renderMDList(){
     list.appendChild(row);
   });
 }
-function selectAllMD(all){ activeFilters.mds = all ? new Set(VISIBLE_MD_CODES) : new Set(); renderMDList(); updateMDBtnLabel(); renderAll(); }
+function selectAllMD(all){ activeFilters.mds = all ? new Set(ALL_MD_CODES) : new Set(); renderMDList(); updateMDBtnLabel(); renderAll(); }
 function updateMDBtnLabel(){
-  const total = VISIBLE_MD_CODES.length, sel = activeFilters.mds.size;
+  /* Label hitung MD yang tampak di LOV saja (29 MD resmi). MD tak terdaftar tidak dihitung
+     di label karena tidak selectable dari UI, tapi diikutkan dalam data. */
+  const total = VISIBLE_MD_CODES.length;
+  const sel = VISIBLE_MD_CODES.filter(c=>activeFilters.mds.has(c)).length;
   document.getElementById('mdBtnLabel').textContent = sel===total ? 'Semua Main Dealer' : `${sel} MD dipilih`;
   const c = document.getElementById('mdCount');
   if(sel<total){ c.style.display='inline-block'; c.textContent = sel; } else { c.style.display='none'; }
 }
 
 function resetFilters(){
-  activeFilters = { region:'all', mds:new Set(VISIBLE_MD_CODES), puds:new Set(PUD_FOCUS.map(p=>p.label)) };
+  activeFilters = { region:'all', mds:new Set(ALL_MD_CODES), puds:new Set(PUD_FOCUS.map(p=>p.label)) };
   document.querySelectorAll('#regionSeg button').forEach(b=>b.classList.toggle('active', b.dataset.region==='all'));
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('off'));
   document.getElementById('unitSearch').value='';
@@ -876,7 +897,32 @@ function renderTrend(data){
  try{
   const now = new Date();
   const nowY = now.getFullYear(), nowM = now.getMonth();
-  const years = [2024,2025,2026];
+
+  /* Aturan sumber: kolom Status (K) non-blank = "Sudah Diproses". Semua record ini WAJIB
+     tampil di chart. Yang punya tanggal valid (di dalam rentang [2015, bulan berjalan])
+     diplot di bulannya. Sisanya — tidak ada tanggal sama sekali, tahun aneh (1990/2029),
+     atau tanggal setelah hari ini — ditempel ke bulan terakhir supaya tidak hilang dan
+     titik akhir kumulatif = KPI "Sudah Diproses". */
+  const doneAll = data.filter(isDone);
+  const withDate = [];    /* record yang bisa dipetakan ke bulan valid */
+  const unplaceable = []; /* record tanpa tanggal / tahun di luar rentang / setelah bulan berjalan */
+  doneAll.forEach(r=>{
+    const dd = doneDate(r);
+    if(!dd){ unplaceable.push(r); return; }
+    const d = new Date(dd);
+    const y = d.getFullYear(), mi = d.getMonth();
+    if(isNaN(y) || y<2015 || y>nowY || (y===nowY && mi>nowM)){
+      unplaceable.push(r); return;
+    }
+    withDate.push({r, d, y, mi});
+  });
+
+  /* Rentang tahun otomatis mengikuti data — biar tidak ada record yang lolos karena
+     rentang tahun terlalu sempit. */
+  const dataYears = withDate.map(x=>x.y);
+  const minY = dataYears.length ? Math.min(...dataYears, nowY) : nowY;
+  const years = [];
+  for(let y=minY; y<=nowY; y++) years.push(y);
   const allLabels = [], allKeys = [];
   years.forEach(y=>MONTHS_SHORT.forEach((m,mi)=>{
     if(y>nowY) return;
@@ -884,35 +930,27 @@ function renderTrend(data){
     allLabels.push(m+" '"+String(y).slice(2));
     allKeys.push([y,mi]);
   }));
-  /* Semua record "sudah diproses" (r.st terisi) → wajib masuk perhitungan.
-     Yang punya tanggal lapor/periksa/kerja valid diletakkan di bulannya sendiri.
-     Yang tidak punya tanggal sama sekali (anomali) ditempel ke bulan terakhir
-     yang terlihat supaya titik akhir kumulatif = KPI "Sudah Diproses". */
-  const doneAll = data.filter(isDone);
-  const doneRecs = doneAll.map(r=>{ const dd = doneDate(r); return dd ? {r, d:new Date(dd)} : null; }).filter(Boolean);
-  const noDateRecs = doneAll.filter(r=>doneDate(r)===null);
+
   const presentPuds = PUD_FOCUS.map(p=>p.label).filter(l=> doneAll.some(r=>r.f===l));
-  const raw = allKeys.map(([y,mi])=> presentPuds.map(l=> doneRecs.filter(x=>{
-    if(x.r.f!==l) return false;
-    return x.d.getFullYear()===y && x.d.getMonth()===mi;
-  }).length));
+  const raw = allKeys.map(([y,mi])=> presentPuds.map(l=> withDate.filter(x=>
+    x.r.f===l && x.y===y && x.mi===mi
+  ).length));
   const keepIdx = raw.map((row,i)=> row.some(v=>v>0) ? i : -1).filter(i=>i>=0);
-  /* Kalau ada record tanpa tanggal tapi tidak ada bulan yang di-keep,
-     paksa bulan berjalan tetap tampil sebagai wadahnya. */
-  if(!keepIdx.length && noDateRecs.length){
+  /* Kalau semua bulan kosong tapi ada record unplaceable, paksa bulan berjalan tampil */
+  if(!keepIdx.length && unplaceable.length){
     const lastIdx = allKeys.length-1;
     if(lastIdx>=0){ raw[lastIdx] = presentPuds.map(_=>0); keepIdx.push(lastIdx); }
   }
   const labels = keepIdx.map(i=>allLabels[i]);
   const datasets = presentPuds.map((label,pIdx)=>({ type:'bar', label, backgroundColor: colorOf(label), data: keepIdx.map(i=>raw[i][pIdx]), yAxisID:'y' }));
 
-  /* Distribusi record tanpa tanggal → bulan terakhir yang tampil, di-split per jenis PUD */
-  if(noDateRecs.length && keepIdx.length){
+  /* Tempel record unplaceable ke bulan terakhir yang tampil, di-split per jenis PUD */
+  if(unplaceable.length && keepIdx.length){
     const lastCol = keepIdx.length-1;
-    const noDateByPud = {};
-    noDateRecs.forEach(r=>{ noDateByPud[r.f] = (noDateByPud[r.f]||0)+1; });
+    const byPud = {};
+    unplaceable.forEach(r=>{ byPud[r.f] = (byPud[r.f]||0)+1; });
     presentPuds.forEach((label,pIdx)=>{
-      const add = noDateByPud[label] || 0;
+      const add = byPud[label] || 0;
       if(add>0) datasets[pIdx].data[lastCol] += add;
     });
   }
