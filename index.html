@@ -229,9 +229,7 @@
     <div class="num">1</div>
     <div class="txt">
       <h2>Capaian PUD Keseluruhan</h2>
-      <p>Progress pengerjaan, deklarasi, dan yang belum dikerjakan — nasional maupun per Main Dealer.
-         Target unit sudah <b>disesuaikan atas perpindahan pengerjaan lintas MD</b> — unit yang dikerjakan
-         MD Pelapor (kolom F) berbeda dari MD Distribusi (kolom B) target-nya berpindah mengikuti MD yang mengerjakan.</p>
+      <p>Progress pengerjaan, deklarasi, dan yang belum dikerjakan — nasional maupun per Main Dealer.</p>
     </div>
   </div>
 
@@ -240,7 +238,7 @@
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
         <div style="flex:1; min-width:0;">
           <h3>Tren Penyelesaian Bulanan</h3>
-          <div class="sub">Unit selesai diproses (pengerjaan/deklarasi) per bulan, per jenis PUD. Bulan tanpa data disembunyikan. Total kumulatif = KPI "Sudah Diproses".</div>
+          <div class="sub">Unit selesai diproses (pengerjaan/deklarasi) per bulan, per jenis PUD.</div>
         </div>
         <div class="filter-group" style="min-width:0;">
           <label class="fg-title">Rentang Waktu</label>
@@ -356,12 +354,6 @@
     <h3>Unit Pindah Wilayah Pengerjaan</h3>
     <div class="sub">Unit yang didistribusikan dari satu MD tapi dikerjakan/dilaporkan oleh MD lain — klik baris untuk lihat detail unitnya</div>
     <div style="overflow-x:auto;"><table class="matrix" id="migTable"></table></div>
-  </div>
-
-  <div class="card">
-    <h3>Program PUD Lain di Luar Fokus 2026</h3>
-    <div class="sub">Ada di database yang sama, belum masuk cakupan monitoring aktif saat ini — untuk konteks skala data</div>
-    <div class="other-types" id="otherTypes"></div>
   </div>
 
 </main>
@@ -1422,6 +1414,7 @@ function renderMigration(data){
 
 function buildOtherTypes(){
   const wrap = document.getElementById('otherTypes');
+  if(!wrap) return;
   wrap.innerHTML = OTHER_TYPES.map(o=>`<span class="other-tag">${o.name} — ${o.count.toLocaleString('id-ID')} unit</span>`).join('');
 }
 
