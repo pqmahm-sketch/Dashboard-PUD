@@ -852,11 +852,13 @@ function renderMDRanking(data){
 
 function renderKPIs(data){
   const total = data.length;
-  /* "Sudah Diproses" = unit yang statusnya sudah terisi (Pengerjaan/Deklarasi) DAN
-     punya tanggal lapor yang valid — sama persis dengan yang diplot di Tren Kumulatif,
-     supaya kedua angka tidak pernah beda. Record tanpa tanggal lapor valid tetap dihitung
-     sebagai anomali di banner peringatan data. */
-  const done = data.filter(r=>doneDate(r)!==null).length;
+  /* Aturan sumber: kolom Status (K) pada Spreadsheet Database Pengerjaan PUD:
+     - Blank → "Belum Dikerjakan"
+     - Terisi apa pun → "Sudah Diproses" (Pengerjaan atau Deklarasi)
+     Jadi KPI ini menghitung semua record dengan r.st terisi, tanpa syarat tanggal.
+     Tren Kumulatif di bawahnya juga menaikkan record tanpa tanggal ke bulan terakhir
+     supaya titik akhirnya tepat sama dengan angka KPI ini. */
+  const done = data.filter(r=>bucket(r)!=='belum').length;
   const pending = total-done;
   const pindah = data.filter(r=>r.mg).length;
   const pct = total? Math.round(done/total*100):0;
@@ -882,20 +884,47 @@ function renderTrend(data){
     allLabels.push(m+" '"+String(y).slice(2));
     allKeys.push([y,mi]);
   }));
-  /* Precompute done date per record supaya tren + kumulatif konsisten dengan KPI "Sudah Diproses" */
-  const doneRecs = data.filter(isDone).map(r=>{ const dd = doneDate(r); return dd ? {r, d:new Date(dd)} : null; }).filter(Boolean);
-  const presentPuds = PUD_FOCUS.map(p=>p.label).filter(l=> doneRecs.some(x=>x.r.f===l));
+  /* Semua record "sudah diproses" (r.st terisi) → wajib masuk perhitungan.
+     Yang punya tanggal lapor/periksa/kerja valid diletakkan di bulannya sendiri.
+     Yang tidak punya tanggal sama sekali (anomali) ditempel ke bulan terakhir
+     yang terlihat supaya titik akhir kumulatif = KPI "Sudah Diproses". */
+  const doneAll = data.filter(isDone);
+  const doneRecs = doneAll.map(r=>{ const dd = doneDate(r); return dd ? {r, d:new Date(dd)} : null; }).filter(Boolean);
+  const noDateRecs = doneAll.filter(r=>doneDate(r)===null);
+  const presentPuds = PUD_FOCUS.map(p=>p.label).filter(l=> doneAll.some(r=>r.f===l));
   const raw = allKeys.map(([y,mi])=> presentPuds.map(l=> doneRecs.filter(x=>{
     if(x.r.f!==l) return false;
     return x.d.getFullYear()===y && x.d.getMonth()===mi;
   }).length));
   const keepIdx = raw.map((row,i)=> row.some(v=>v>0) ? i : -1).filter(i=>i>=0);
+  /* Kalau ada record tanpa tanggal tapi tidak ada bulan yang di-keep,
+     paksa bulan berjalan tetap tampil sebagai wadahnya. */
+  if(!keepIdx.length && noDateRecs.length){
+    const lastIdx = allKeys.length-1;
+    if(lastIdx>=0){ raw[lastIdx] = presentPuds.map(_=>0); keepIdx.push(lastIdx); }
+  }
   const labels = keepIdx.map(i=>allLabels[i]);
   const datasets = presentPuds.map((label,pIdx)=>({ type:'bar', label, backgroundColor: colorOf(label), data: keepIdx.map(i=>raw[i][pIdx]), yAxisID:'y' }));
 
-  /* Tren akumulatif: total unit selesai diproses secara kumulatif, memakai sumbu Y kedua di kanan */
+  /* Distribusi record tanpa tanggal → bulan terakhir yang tampil, di-split per jenis PUD */
+  if(noDateRecs.length && keepIdx.length){
+    const lastCol = keepIdx.length-1;
+    const noDateByPud = {};
+    noDateRecs.forEach(r=>{ noDateByPud[r.f] = (noDateByPud[r.f]||0)+1; });
+    presentPuds.forEach((label,pIdx)=>{
+      const add = noDateByPud[label] || 0;
+      if(add>0) datasets[pIdx].data[lastCol] += add;
+    });
+  }
+
+  /* Tren akumulatif: dijamin berakhir di angka yang sama dengan KPI "Sudah Diproses" */
   let running = 0;
-  const cumulative = keepIdx.map(i=>{ running += raw[i].reduce((a,b)=>a+b,0); return running; });
+  const cumulative = keepIdx.map((_,idx)=>{
+    let colSum = 0;
+    datasets.forEach(ds=>{ if(ds.type!=='line') colSum += (ds.data[idx]||0); });
+    running += colSum;
+    return running;
+  });
   datasets.push({
     type:'line', label:'Kumulatif', data:cumulative, yAxisID:'y1',
     borderColor:getCSS('var(--red)'), backgroundColor:getCSS('var(--red)'),
