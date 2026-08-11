@@ -244,9 +244,21 @@
 
   <div class="grid2">
     <div class="card">
-      <h3>Tren Penyelesaian Bulanan</h3>
-      <div class="sub">Unit selesai diproses (pengerjaan/deklarasi) per bulan, per jenis PUD. Bulan tanpa data disembunyikan. Total kumulatif = KPI "Sudah Diproses".</div>
-      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:0;">
+          <h3>Tren Penyelesaian Bulanan</h3>
+          <div class="sub">Unit selesai diproses (pengerjaan/deklarasi) per bulan, per jenis PUD. Bulan tanpa data disembunyikan. Total kumulatif = KPI "Sudah Diproses".</div>
+        </div>
+        <div class="filter-group" style="min-width:0;">
+          <label class="fg-title">Rentang Waktu</label>
+          <div class="seg" id="trendPeriodSeg">
+            <button data-trend="all" class="active">Semua</button>
+            <button data-trend="12">1 tahun terakhir</button>
+            <button data-trend="6">6 bulan terakhir</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="margin-top:8px;"><canvas id="trendChart"></canvas></div>
     </div>
     <div class="card">
       <h3>Progress Keseluruhan</h3>
@@ -269,7 +281,7 @@
       <span class="lg-title">Legenda warna:</span>
       <div class="lg-group"><span class="lg-swatch" style="background:#DC2626"></span>&lt; 50% — Perlu perhatian serius</div>
       <div class="lg-group"><span class="lg-swatch" style="background:#F97316"></span>50–69% — Kurang</div>
-      <div class="lg-group"><span class="lg-swatch" style="background:#D6A93B"></span>70–90% — Mendekati target</div>
+      <div class="lg-group"><span class="lg-swatch" style="background:#D6A93B"></span>70–90% — Kurang Baik</div>
       <div class="lg-group"><span class="lg-swatch" style="background:#16A34A"></span>&gt; 90% — Baik</div>
       <div class="lg-group"><span class="lg-swatch" style="background:#D8DCE2"></span>0% — Belum ada progress</div>
     </div>
@@ -551,6 +563,8 @@ const STATUS_SHORT = {
 let activeFilters = { region:'all', mds:new Set(ALL_MD_CODES), puds:new Set(PUD_FOCUS.map(p=>p.label)) };
 /* Periode khusus untuk bagian "Informasi Deklarasi": '2025' | '2026' | 'all' */
 let dekPeriod = '2026';
+/* Rentang waktu untuk kartu Tren Penyelesaian Bulanan: 'all' | '12' (12 bulan terakhir) | '6' (6 bulan terakhir) */
+let trendPeriod = 'all';
 let charts = {};
 
 function getCSS(varStr){ if(!varStr.startsWith('var(')) return varStr; const name=varStr.slice(4,-1); return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
@@ -733,6 +747,14 @@ document.getElementById('dekPeriodSeg').addEventListener('click', e=>{
   e.target.classList.add('active');
   dekPeriod = e.target.dataset.period;
   renderDeklarasiInfo();
+});
+/* Segmented control rentang waktu untuk Tren Penyelesaian Bulanan */
+document.getElementById('trendPeriodSeg').addEventListener('click', e=>{
+  if(e.target.tagName!=='BUTTON') return;
+  [...e.currentTarget.children].forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  trendPeriod = e.target.dataset.trend;
+  renderTrend(getFiltered());
 });
 function buildPudChips(){
   const wrap = document.getElementById('pudChips');
@@ -935,12 +957,48 @@ function renderTrend(data){
   const raw = allKeys.map(([y,mi])=> presentPuds.map(l=> withDate.filter(x=>
     x.r.f===l && x.y===y && x.mi===mi
   ).length));
-  const keepIdx = raw.map((row,i)=> row.some(v=>v>0) ? i : -1).filter(i=>i>=0);
+  const keepIdxAll = raw.map((row,i)=> row.some(v=>v>0) ? i : -1).filter(i=>i>=0);
   /* Kalau semua bulan kosong tapi ada record unplaceable, paksa bulan berjalan tampil */
-  if(!keepIdx.length && unplaceable.length){
+  if(!keepIdxAll.length && unplaceable.length){
     const lastIdx = allKeys.length-1;
-    if(lastIdx>=0){ raw[lastIdx] = presentPuds.map(_=>0); keepIdx.push(lastIdx); }
+    if(lastIdx>=0){ raw[lastIdx] = presentPuds.map(_=>0); keepIdxAll.push(lastIdx); }
   }
+
+  /* Terapkan LOV "Rentang Waktu" (Semua / 12 bulan terakhir / 6 bulan terakhir).
+     Bulan sebelum window dijumlahkan sebagai "prior cumulative" supaya garis kumulatif
+     tetap merepresentasikan running total dari awal, dan titik akhirnya tetap = KPI. */
+  let keepIdx = keepIdxAll;
+  let priorCumulative = 0;
+  if(trendPeriod!=='all' && keepIdxAll.length){
+    const N = parseInt(trendPeriod,10);
+    const cutoff = new Date(nowY, nowM - (N-1), 1).getTime();
+    const firstVisible = keepIdxAll.findIndex(i => new Date(allKeys[i][0], allKeys[i][1], 1).getTime() >= cutoff);
+    if(firstVisible>0){
+      for(let k=0; k<firstVisible; k++){
+        raw[keepIdxAll[k]].forEach(v => priorCumulative += v);
+      }
+      keepIdx = keepIdxAll.slice(firstVisible);
+    } else if(firstVisible<0){
+      /* Semua bulan tersedia berada sebelum window — tetap tampilkan window kosong dari cutoff s/d sekarang */
+      for(let k=0; k<keepIdxAll.length; k++){
+        raw[keepIdxAll[k]].forEach(v => priorCumulative += v);
+      }
+      keepIdx = [];
+      for(let mmi=nowM-(N-1); mmi<=nowM; mmi++){
+        const yy = nowY + Math.floor(mmi/12);
+        const mi = ((mmi%12)+12)%12;
+        const idx = allKeys.findIndex(([y,m])=> y===yy && m===mi);
+        if(idx>=0){ keepIdx.push(idx); }
+        else {
+          allLabels.push(MONTHS_SHORT[mi]+" '"+String(yy).slice(2));
+          allKeys.push([yy,mi]);
+          raw.push(presentPuds.map(_=>0));
+          keepIdx.push(allKeys.length-1);
+        }
+      }
+    }
+  }
+
   const labels = keepIdx.map(i=>allLabels[i]);
   const datasets = presentPuds.map((label,pIdx)=>({ type:'bar', label, backgroundColor: colorOf(label), data: keepIdx.map(i=>raw[i][pIdx]), yAxisID:'y' }));
 
@@ -955,8 +1013,9 @@ function renderTrend(data){
     });
   }
 
-  /* Tren akumulatif: dijamin berakhir di angka yang sama dengan KPI "Sudah Diproses" */
-  let running = 0;
+  /* Tren akumulatif: dimulai dari priorCumulative (jumlah bulan sebelum window),
+     akhirnya tetap = KPI "Sudah Diproses". */
+  let running = priorCumulative;
   const cumulative = keepIdx.map((_,idx)=>{
     let colSum = 0;
     datasets.forEach(ds=>{ if(ds.type!=='line') colSum += (ds.data[idx]||0); });
