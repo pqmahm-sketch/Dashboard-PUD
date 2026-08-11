@@ -544,15 +544,14 @@ function bucket(r){
   return 'pengerjaan';
 }
 function isDone(r){ return bucket(r)!=='belum'; }
-/* Tanggal "penyelesaian" untuk unit yang sudah diproses:
-   - untuk deklarasi: pakai tanggal periksa, kalau kosong fallback ke tanggal kerja lalu tanggal lapor
-   - untuk pengerjaan: pakai tanggal kerja, kalau kosong fallback ke tanggal periksa lalu tanggal lapor
-   Fungsi ini menjamin setiap unit "sudah diproses" bisa dipetakan ke bulan tertentu,
-   sehingga jumlah kumulatif pada tren = jumlah unit "Sudah Diproses" pada KPI. */
+/* Tanggal acuan bulan untuk unit yang sudah diproses.
+   Sesuai kesepakatan dengan spreadsheet sumber (Database Pengerjaan PUD),
+   basis pengelompokan bulan adalah TANGGAL LAPOR (r.tl) — bukan tanggal periksa
+   atau tanggal pengerjaan. Kalau tl kosong, baru fallback ke tp lalu tk agar
+   record tetap bisa dipetakan ke bulan tertentu. */
 function doneDate(r){
   if(!isDone(r)) return null;
-  const b = bucket(r);
-  const cand = b==='deklarasi' ? [r.tp, r.tk, r.tl] : [r.tk, r.tp, r.tl];
+  const cand = [r.tl, r.tp, r.tk];
   for(const d of cand){
     if(!d) continue;
     const y = new Date(d).getFullYear();
@@ -791,7 +790,8 @@ function getDekFiltered(){
   if(dekPeriod==='all') return base;
   const y = parseInt(dekPeriod,10);
   return base.filter(r=>{
-    const d = r.tp || r.tk || r.tl;
+    /* Filter periode juga pakai tanggal lapor supaya konsisten dengan spreadsheet sumber */
+    const d = r.tl || r.tp || r.tk;
     if(!d) return false;
     const yy = new Date(d).getFullYear();
     return yy===y;
@@ -852,10 +852,11 @@ function renderMDRanking(data){
 
 function renderKPIs(data){
   const total = data.length;
-  /* "Sudah Diproses" = semua unit yang statusnya bukan "Belum Dikerjakan" (Pengerjaan + Deklarasi).
-     Tren Kumulatif di grafik memakai fallback tanggal (tk → tp → tl) supaya nilainya konsisten
-     dengan KPI ini. */
-  const done = data.filter(r=>bucket(r)!=='belum').length;
+  /* "Sudah Diproses" = unit yang statusnya sudah terisi (Pengerjaan/Deklarasi) DAN
+     punya tanggal lapor yang valid — sama persis dengan yang diplot di Tren Kumulatif,
+     supaya kedua angka tidak pernah beda. Record tanpa tanggal lapor valid tetap dihitung
+     sebagai anomali di banner peringatan data. */
+  const done = data.filter(r=>doneDate(r)!==null).length;
   const pending = total-done;
   const pindah = data.filter(r=>r.mg).length;
   const pct = total? Math.round(done/total*100):0;
@@ -1055,7 +1056,9 @@ function renderDeklarasiInfo(){
   }));
   const presentPuds = PUD_FOCUS.map(p=>p.label).filter(l=> data.some(r=>r.f===l));
   const raw = allKeys.map(([y,mi])=> presentPuds.map(l=> data.filter(r=>{
-    const d = r.tp || r.tk || r.tl;
+    /* Bucket bulan pakai tanggal lapor supaya sinkron dengan spreadsheet sumber
+       (fallback ke tp/tk hanya kalau tl kosong). */
+    const d = r.tl || r.tp || r.tk;
     if(r.f!==l || !d) return false;
     const dt = new Date(d);
     return dt.getFullYear()===y && dt.getMonth()===mi;
