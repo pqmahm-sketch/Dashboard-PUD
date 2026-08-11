@@ -872,7 +872,12 @@ function renderMDRanking(data){
       if(bucket(r)!=='belum') acc[r.md].done++;
       return acc;
     }, {})
-  ).map(([code,v])=>({
+  )
+  /* Sembunyikan MD tak terdaftar (AHM Head Office, HM, dan kode belum terdaftar)
+     dari peringkat — fokus ke 29 MD resmi. Record mereka tetap ikut di KPI
+     "Sudah Diproses" dan garis kumulatif, hanya tidak diranking. */
+  .filter(([code])=>!UNREGISTERED_MD.includes(code))
+  .map(([code,v])=>({
     code, name: mdName(code).replace(' ⚠',''),
     total:v.total, done:v.done,
     pct: v.total ? v.done/v.total*100 : 0
