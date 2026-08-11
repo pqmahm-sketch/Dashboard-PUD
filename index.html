@@ -238,7 +238,9 @@
     <div class="num">1</div>
     <div class="txt">
       <h2>Capaian PUD Keseluruhan</h2>
-      <p>Progress pengerjaan, deklarasi, dan yang belum dikerjakan — nasional maupun per Main Dealer</p>
+      <p>Progress pengerjaan, deklarasi, dan yang belum dikerjakan — nasional maupun per Main Dealer.
+         Target unit sudah <b>disesuaikan atas perpindahan pengerjaan lintas MD</b> — unit yang dikerjakan
+         MD Pelapor (kolom F) berbeda dari MD Distribusi (kolom B) target-nya berpindah mengikuti MD yang mengerjakan.</p>
     </div>
   </div>
 
@@ -576,6 +578,22 @@ function bucket(r){
   return 'pengerjaan';
 }
 function isDone(r){ return bucket(r)!=='belum'; }
+
+/* ================= PERPINDAHAN TARGET UNIT ================= */
+/* Kalau sebuah unit didistribusikan ke MD X (kolom B) tapi dikerjakan oleh MD Y (kolom F),
+   maka target unit tersebut BERPINDAH ke MD Y. Dengan begitu:
+   - MD X: total target berkurang 1 (kolom C di rumus), tidak dianggap belum kerjaannya.
+   - MD Y: total target bertambah 1 (kolom D di rumus), capaian ikut naik karena Y kerjakan.
+   Pengecualian: deklarasi selalu tetap milik MD Distribusi (yang berhak mendeklarasi
+   adalah pemilik target awalnya), sesuai konsep bisnis yang disepakati. */
+function effectiveMD(r){
+  if(bucket(r)==='deklarasi') return r.md;
+  if(r.mg) return r.mdp;
+  return r.md;
+}
+function effectiveRegion(r){
+  return MD_REGION[effectiveMD(r)];
+}
 /* Tanggal acuan bulan untuk unit yang sudah diproses.
    Sesuai kesepakatan dengan spreadsheet sumber (Database Pengerjaan PUD),
    basis pengelompokan bulan adalah TANGGAL LAPOR (r.tl) — bukan tanggal periksa
@@ -818,8 +836,10 @@ function getFiltered(){
   const q = document.getElementById('unitSearch').value.trim().toLowerCase();
   return RAW_DATA.filter(r=>{
     if(!activeFilters.puds.has(r.f)) return false;
-    if(!activeFilters.mds.has(r.md)) return false;
-    if(activeFilters.region!=='all' && MD_REGION[r.md]!==activeFilters.region) return false;
+    /* Filter memakai MD efektif (setelah perpindahan target), bukan MD distribusi asli. */
+    const eff = effectiveMD(r);
+    if(!activeFilters.mds.has(eff)) return false;
+    if(activeFilters.region!=='all' && MD_REGION[eff]!==activeFilters.region) return false;
     if(q){
       const hay = `${r.rk||''} ${r.ms||''} ${r.nah||''} ${r.ah||''}`.toLowerCase();
       if(!hay.includes(q)) return false;
@@ -867,9 +887,10 @@ function rankBand(pct){
 function renderMDRanking(data){
   const rows = Object.entries(
     data.reduce((acc,r)=>{
-      if(!acc[r.md]) acc[r.md] = {total:0, done:0};
-      acc[r.md].total++;
-      if(bucket(r)!=='belum') acc[r.md].done++;
+      const md = effectiveMD(r);
+      if(!acc[md]) acc[md] = {total:0, done:0};
+      acc[md].total++;
+      if(bucket(r)!=='belum') acc[md].done++;
       return acc;
     }, {})
   )
@@ -1201,7 +1222,7 @@ function renderDeklarasiInfo(){
   /* KPI cards */
   const monthsWithData = keepIdx.length || 1;
   const rata2 = total / monthsWithData;
-  const mdAktif = new Set(data.map(r=>r.md)).size;
+  const mdAktif = new Set(data.map(r=>effectiveMD(r))).size;
   /* Pembagi "MD terpilih" harus menghormati filter wilayah — kalau region 2 dipilih,
      hanya MD region 2 yang ikut dihitung sebagai denominator. */
   const mdSelectedInRegion = [...activeFilters.mds].filter(code=>{
@@ -1315,9 +1336,10 @@ function renderHeatmap(data){
   const pudLabels = PUD_FOCUS.map(p=>p.label).filter(l=>activeFilters.puds.has(l));
   const byMD = {};
   data.forEach(r=>{
-    if(!byMD[r.md]) byMD[r.md] = {pengerjaan:{}, deklarasi:{}, belum:{}};
+    const md = effectiveMD(r);
+    if(!byMD[md]) byMD[md] = {pengerjaan:{}, deklarasi:{}, belum:{}};
     const b = bucket(r);
-    byMD[r.md][b][r.f] = (byMD[r.md][b][r.f]||0)+1;
+    byMD[md][b][r.f] = (byMD[md][b][r.f]||0)+1;
   });
   const rows = Object.entries(byMD).map(([code,v])=>{
     const totalAll = pudLabels.reduce((sum,l)=> sum + (v.pengerjaan[l]||0)+(v.deklarasi[l]||0)+(v.belum[l]||0), 0);
@@ -1353,21 +1375,25 @@ function downloadHeatmapDetail(){
   const data = getFiltered();
   if(!data.length){ alert('Tidak ada data pada filter saat ini untuk diunduh.'); return; }
   const statusLabelMap = {pengerjaan:'Pengerjaan', deklarasi:'Deklarasi', belum:'Belum Dikerjakan'};
-  const rows = data.map(r=>({
-    'Kode MD': r.md,
-    'Nama MD': mdName(r.md).replace(' ⚠',''),
-    'Jenis PUD': r.f,
-    'Status': statusLabelMap[bucket(r)],
-    'No. Rangka': r.rk||'',
-    'No. Mesin': r.ms||'',
-    'No. AHASS': r.ah||'',
-    'Nama AHASS': r.nah||'',
-    'Tanggal Lapor': r.tl||'',
-    'Tanggal Pemeriksaan': r.tp||'',
-    'Tanggal Pengerjaan': r.tk||'',
-    'Dokumentasi': r.doc?'Ada':'Tidak ada',
-    'Pindah Wilayah': r.mg ? migPair(r).map(c=>mdName(c).replace(' ⚠','')).join(' → ') : ''
-  }));
+  const rows = data.map(r=>{
+    const eff = effectiveMD(r);
+    return {
+      'Kode MD Distribusi': r.md,
+      'Kode MD Efektif (Target)': eff,
+      'Nama MD Efektif': mdName(eff).replace(' ⚠',''),
+      'Jenis PUD': r.f,
+      'Status': statusLabelMap[bucket(r)],
+      'No. Rangka': r.rk||'',
+      'No. Mesin': r.ms||'',
+      'No. AHASS': r.ah||'',
+      'Nama AHASS': r.nah||'',
+      'Tanggal Lapor': r.tl||'',
+      'Tanggal Pemeriksaan': r.tp||'',
+      'Tanggal Pengerjaan': r.tk||'',
+      'Dokumentasi': r.doc?'Ada':'Tidak ada',
+      'Pindah Wilayah': r.mg ? migPair(r).map(c=>mdName(c).replace(' ⚠','')).join(' → ') : ''
+    };
+  });
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = Object.keys(rows[0]).map(()=>({wch:18}));
   const wb = XLSX.utils.book_new();
@@ -1410,7 +1436,7 @@ function buildOtherTypes(){
 
 /* ================= MODAL ================= */
 function openDetail(kodeMD, pudLabel, statusKey){
-  let data = getFiltered().filter(r=>r.md===kodeMD && r.f===pudLabel);
+  let data = getFiltered().filter(r=>effectiveMD(r)===kodeMD && r.f===pudLabel);
   if(statusKey) data = data.filter(r=>bucket(r)===statusKey);
   const statusLabelMap = {pengerjaan:'Pengerjaan', deklarasi:'Deklarasi', belum:'Belum Dikerjakan'};
   const statusSuffix = statusKey ? ` — ${statusLabelMap[statusKey]}` : '';
