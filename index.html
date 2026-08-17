@@ -107,6 +107,24 @@
   .heat-cell.empty{background:#EEF0F3; color:#B6BCC5; cursor:default; font-weight:500;}
   .heat-cell.empty:hover{transform:none; box-shadow:none;}
   td.ytd-cell{font-weight:800; font-family:'IBM Plex Mono',monospace; color:var(--teal); font-size:13px;}
+  /* Tabel Loss PUD — layout mirip heatmap tapi kolom-kanan = bulan (bukan status/PUD) */
+  table.loss{border-collapse:collapse; width:100%; font-size:11.5px; min-width:720px;}
+  table.loss th{text-align:center; padding:8px 8px; font-size:10px; text-transform:uppercase; color:var(--ink-soft); letter-spacing:.4px; background:#F8F9FB; border-bottom:1px solid var(--line); border-right:1px solid var(--line); position:sticky; top:0; z-index:2;}
+  table.loss th:last-child{border-right:none;}
+  table.loss th.md-col{text-align:left; min-width:200px; left:0; z-index:3;}
+  table.loss th.pud-col{text-align:left; min-width:90px; left:200px; z-index:3;}
+  table.loss td{padding:4px; text-align:center; border-right:1px solid var(--line); border-bottom:1px solid var(--line); background:#fff;}
+  table.loss td:last-child{border-right:none;}
+  table.loss tr:last-child td{border-bottom:none;}
+  table.loss td.md-name{text-align:left; font-weight:700; font-size:12px; padding:6px 8px; white-space:nowrap; position:sticky; left:0; z-index:1; border-right:1px solid var(--line);}
+  table.loss td.md-name .code{color:#9AA3AF; font-weight:600; font-family:'IBM Plex Mono',monospace; font-size:10px; margin-right:5px;}
+  table.loss td.pud-name{text-align:left; font-weight:700; font-size:11.5px; padding:6px 8px; white-space:nowrap; position:sticky; left:200px; z-index:1; border-right:1px solid var(--line); background:#fff;}
+  table.loss td.total-cell{font-weight:800; font-family:'IBM Plex Mono',monospace; color:var(--red); font-size:13px;}
+  .loss-cell{width:52px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:700; font-family:'IBM Plex Mono', monospace; font-size:11.5px; cursor:pointer; margin:0 auto; transition:transform .1s;}
+  .loss-cell:hover{transform:scale(1.08); box-shadow:0 3px 10px rgba(0,0,0,.15);}
+  .loss-cell.empty{background:#EEF0F3; color:#B6BCC5; cursor:default; font-weight:500;}
+  .loss-cell.empty:hover{transform:none; box-shadow:none;}
+
   .heat-legend{display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-top:12px; font-size:11px; color:var(--ink-soft);}
   .heat-legend .lg-title{font-weight:700; text-transform:uppercase; letter-spacing:.4px; font-size:10px;}
   .heat-legend .lg-group{display:flex; align-items:center; gap:6px;}
@@ -134,7 +152,7 @@
   .rank-legend .lg-swatch{width:22px; height:10px; border-radius:100px;}
   table.matrix th, table.matrix td{padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle;}
   table.matrix th:last-child, table.matrix td:last-child{text-align:right;}
-  table.matrix thead th{font-size:10.5px; text-transform:uppercase; color:var(--ink-soft); letter-spacing:.3px; border-bottom:2px solid var(--line);}
+  table.matrix thead th{font-size:10.5px; text-transform:uppercase; color:var(--ink-soft); letter-spacing:.3px; border-bottom:2px solid var(--line); background:#F8F9FB; position:sticky; top:0; z-index:2;}
   table.matrix tbody tr:hover{background:#FAFAFB;}
   table.matrix td.total{font-weight:800; font-family:'IBM Plex Mono',monospace;}
   .pud-badge{display:inline-block; background:#F1F2F4; border-radius:100px; padding:3px 9px; font-size:10.5px; font-weight:700; color:var(--ink-soft); margin:2px 3px 2px 0;}
@@ -281,7 +299,7 @@
   <div class="card" style="margin-bottom:16px;">
     <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
       <div>
-        <h3>Heatmap Main Dealer × Jenis PUD</h3>
+        <h3>Kondisi Main Dealer × Jenis PUD</h3>
         <div class="sub">Dipecah per status — Pengerjaan / Deklarasi / Belum Proses. Klik sel untuk melihat daftar unitnya</div>
       </div>
       <button class="dd-btn" onclick="downloadHeatmapDetail()">⬇ Download Data Detail (Excel)</button>
@@ -289,9 +307,9 @@
     <div class="heat-scroll"><table class="heat" id="heatTable"></table></div>
     <div class="heat-legend">
       <span class="lg-title">Legenda:</span>
-      <div class="lg-group"><span class="lg-swatch" style="background:rgba(22,163,74,.75)"></span>Pengerjaan (hijau)</div>
+      <div class="lg-group"><span class="lg-swatch" style="background:rgba(22,163,74,.75)"></span>Sudah Dikerjakan (hijau)</div>
       <div class="lg-group"><span class="lg-swatch" style="background:rgba(245,158,11,.75)"></span>Deklarasi (kuning)</div>
-      <div class="lg-group"><span class="lg-swatch" style="background:rgba(220,38,38,.75)"></span>Belum Proses (merah)</div>
+      <div class="lg-group"><span class="lg-swatch" style="background:rgba(220,38,38,.75)"></span>Belum Dikerjakan (merah)</div>
       <div class="lg-group"><span class="lg-swatch" style="background:#EEF0F3"></span>Tidak ada unit (abu-abu)</div>
       <div class="lg-group" style="margin-left:auto; font-style:italic;">Intensitas warna proporsional dengan jumlah unit</div>
     </div>
@@ -348,12 +366,44 @@
     <div id="reasonWrap" class="chart-wrap tall"><canvas id="reasonChart"></canvas></div>
   </div>
 
+  <hr class="group-divider">
+  <div class="group-header">
+    <div class="num">3</div>
+    <div class="txt">
+      <h2>Unit Loss PUD</h2>
+      <p>Unit PUD yang sudah masuk ke AHASS tapi tidak dikerjakan sebagai PUD. Dikelompokkan per Main Dealer tempat servis × jenis PUD × bulan Work Order.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <div>
+        <h3>Loss PUD per Main Dealer × Jenis PUD × Bulan</h3>
+        <div class="sub">Kolom paling kiri = MD tempat servis (yang loss PUD). Klik sel untuk melihat detail unit — mengikuti filter Wilayah / Main Dealer / Jenis PUD di bagian atas halaman.</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <div style="font-size:12px; color:var(--ink-soft);">Total: <b id="lossTotal" style="color:var(--ink); font-family:'IBM Plex Mono', monospace;">–</b> unit</div>
+      </div>
+    </div>
+    <div class="loss-scroll" style="overflow:auto; max-height:520px; border:1px solid var(--line); border-radius:10px; margin-top:12px;">
+      <table class="loss" id="lossTable"></table>
+    </div>
+    <div class="heat-legend">
+      <span class="lg-title">Legenda:</span>
+      <div class="lg-group"><span class="lg-swatch" style="background:rgba(220,38,38,.75)"></span>Loss unit (merah, intensitas sesuai jumlah)</div>
+      <div class="lg-group"><span class="lg-swatch" style="background:#EEF0F3"></span>Tidak ada loss (abu-abu)</div>
+      <div class="lg-group" style="margin-left:auto; font-style:italic;">Rincian: <b>Servis di MD yang sama</b> vs <b>Servis di MD berbeda</b> dibedakan di modal detail</div>
+    </div>
+  </div>
+
   <div class="extra-header">Informasi Tambahan</div>
 
   <div class="card" style="margin-bottom:16px;">
     <h3>Unit Pindah Wilayah Pengerjaan</h3>
     <div class="sub">Unit yang didistribusikan dari satu MD tapi dikerjakan/dilaporkan oleh MD lain — klik baris untuk lihat detail unitnya</div>
-    <div style="overflow-x:auto;"><table class="matrix" id="migTable"></table></div>
+    <div class="mig-scroll" style="overflow:auto; max-height:260px; border:1px solid var(--line); border-radius:10px;">
+      <table class="matrix" id="migTable"></table>
+    </div>
   </div>
 
 </main>
@@ -386,6 +436,14 @@ const UNREGISTERED_MD = ['AHM','HM','<not registered>'];
 const EXCLUDED_MD = UNREGISTERED_MD; /* alias lama, dipertahankan untuk kompatibilitas */
 const VISIBLE_MD_CODES = Object.keys(MD_NAMES).filter(c=>!UNREGISTERED_MD.includes(c));
 const ALL_MD_CODES = Object.keys(MD_NAMES);
+
+/* ================= DATA LOSS PUD (snapshot Feb–Apr 2026) =================
+   Sumber: Excel "20260504_Periode_HS_Feb26–Apr26__66_No_Rangka_4_PUD.xlsx" sheet "Data Detail".
+   Struktur record: {f: jenis PUD, rk: no rangka, md: kode MD asal (kolom E),
+     mdn: nama MD asal (F), ms: kode MD servis / MD yang loss (G), msn: nama MD servis (H),
+     wo: no WO (I), wod: tanggal WO ISO (J), ah: AHASS last service (K), nt: keterangan (M)}. */
+const LOSS_DATA = [{"f":"CBR250","rk":"MH1MC7117PK001261","md":"D2Z","mdn":"CDN - ML","ms":"B10","msn":"ITC","wo":"I5A/26-002913","wod":"2026-03-07","ah":"[B10-04121] INDAKO TRADING COY","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC7119NK000562","md":"G02","mdn":"HSO - BKL","ms":"C10","msn":"MA","wo":"WO/26/02/06732/00298","wod":"2026-02-05","ah":"[C10-06732] MENARA AGUNG","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC7119PK000712","md":"D2Z","mdn":"CDN - ML","ms":"D2Z","msn":"CDN - ML","wo":"JOS/26/04/003177_01104","wod":"2026-04-17","ah":"[D2Z-01104] RUDI SERVICE","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7118PK000863","md":"I3Z","mdn":"WMS","ms":"D3Z","msn":"CDN - APL","wo":"JOS/26/04/007207_02700","wod":"2026-04-02","ah":"[D3Z-02700] CDN - SO.MUKA KUNING","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC8118PK000593","md":"D3Z","mdn":"CDN - APL","ms":"D3Z","msn":"CDN - APL","wo":"JOS/26/03/006012_02700","wod":"2026-03-16","ah":"[D3Z-02700] CDN - SO.MUKA KUNING","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8112PK000637","md":"G02","mdn":"HSO - BKL","ms":"G02","msn":"HSO - BKL","wo":"12992-PKB-2604075","wod":"2026-02-11","ah":"[G02-12992] BINTANG MOTOR","nt":"Servis di MD yang sama"},{"f":"AT4","rk":"JH2SD10N9PK300026","md":"L01","mdn":"HSO - YGY","ms":"I01","msn":"JHC","wo":"H10A-PKB-2600213","wod":"2026-04-17","ah":"[I01-00001] Jakarta Honda Centre","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC711XPK000797","md":"I01","mdn":"JHC","ms":"I01","msn":"JHC","wo":"H102-PKB-2605448","wod":"2026-02-07","ah":"[I01-00001] Jakarta Honda Centre","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8216NK000345","md":"I3Z","mdn":"WMS","ms":"I01","msn":"JHC","wo":"H103-PKB-2604105","wod":"2026-03-31","ah":"[I01-16792] Astra International - Astra Motor BSD City","nt":"Servis di MD berbeda"},{"f":"CUV1","rk":"MH1EF3218SK000213","md":"I01","mdn":"JHC","ms":"I01","msn":"JHC","wo":"H102-PKB-2611018","wod":"2026-03-12","ah":"[I01-00001] Jakarta Honda Centre","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7111NK000524","md":"J10","mdn":"DAM","ms":"I3Z","msn":"WMS","wo":"NPTAG2026041100045","wod":"2026-04-11","ah":"[I3Z-02515] TERANG ANUGERAH","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC7111PK001143","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPGSA2026031400197","wod":"2026-03-14","ah":"[I3Z-01000] DIRECT SALES GUNUNG SAHARI QQ WAHANA MAKMUR SEJATI","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7112PK001068","md":"J10","mdn":"DAM","ms":"I3Z","msn":"WMS","wo":"NPGSA2026040400158","wod":"2026-04-04","ah":"[I3Z-01000] DIRECT SALES GUNUNG SAHARI QQ WAHANA MAKMUR SEJATI","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC7112PK001345","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPTMM2026021500025","wod":"2026-02-15","ah":"[I3Z-06990] TELAGA MESTIKA MAS","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7114PK001248","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPCPT2026040900063","wod":"2026-04-09","ah":"[I3Z-01500] WAHANAARTHA RITELINDO (CIPUTAT)","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7115PK001209","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPCPD2026033100050","wod":"2026-03-31","ah":"[I3Z-06985] WAHANAARTHA RITELINDO (CIPONDOH)","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7116PK001140","md":"I01","mdn":"JHC","ms":"I3Z","msn":"WMS","wo":"NPGSA2026031500135","wod":"2026-03-15","ah":"[I3Z-01000] DIRECT SALES GUNUNG SAHARI QQ WAHANA MAKMUR SEJATI","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC7117PK001275","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPLMT2026031600065","wod":"2026-03-16","ah":"[I3Z-01265] LANCAR SUKSES MANDIRI","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7118PK001155","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPTDM2026022400074","wod":"2026-02-24","ah":"[I3Z-06504] TUNAS DWIPA MATRA","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8115NK000189","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPCTM2026031100076","wod":"2026-03-11","ah":"[I3Z-12186] CITRA MANDIRI MOTORINDO","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8116PK000494","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPTRG2026022500035","wod":"2026-02-25","ah":"[I3Z-15580] TERANG ANUGERAH 2","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8118PK000321","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPMMB2026032700070","wod":"2026-03-27","ah":"[I3Z-13025] MITRA MAKMUR JAYA MANDIRI (BOROBUDUR)","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8119NK000275","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPKGA2026040300059","wod":"2026-04-03","ah":"[I3Z-06100] WAHANAARTHA RITELINDO (KELAPA GADING)","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC811XPK000532","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPHKM2026022600063","wod":"2026-02-26","ah":"[I3Z-13414] Honda king","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8211NK000382","md":"I01","mdn":"JHC","ms":"I3Z","msn":"WMS","wo":"NPMMM2026042000058","wod":"2026-04-20","ah":"[I3Z-01555] MARGO MULYO MEGAH","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC8212PK000832","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPBAM2026022700041","wod":"2026-02-27","ah":"[I3Z-09585] BERKAT ABADI","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8215NK000255","md":"M2Z","mdn":"MPM - SBY","ms":"I3Z","msn":"WMS","wo":"NPCL22026032900052","wod":"2026-03-29","ah":"[I3Z-08942] CLARA MOTOR II","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC8216PK000641","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPGSA2026021600132","wod":"2026-02-16","ah":"[I3Z-01000] DIRECT SALES GUNUNG SAHARI QQ WAHANA MAKMUR SEJATI","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8219PK000651","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPTBK2026021600061","wod":"2026-02-16","ah":"[I3Z-07122] TUNAS LUMBUNG HARAPAN","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8219PK000682","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPKGA2026030100006","wod":"2026-03-01","ah":"[I3Z-06100] WAHANAARTHA RITELINDO (KELAPA GADING)","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8219PK000956","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPCPT2026040100087","wod":"2026-04-01","ah":"[I3Z-01500] WAHANAARTHA RITELINDO (CIPUTAT)","nt":"Servis di MD yang sama"},{"f":"CUV1","rk":"MH1EF3211SK000280","md":"I3Z","mdn":"WMS","ms":"I3Z","msn":"WMS","wo":"NPCL22026031200063","wod":"2026-03-12","ah":"[I3Z-08942] CLARA MOTOR II","nt":"Servis di MD yang sama"},{"f":"CB500","rk":"MLHPC649XK5100076","md":"I3Z","mdn":"WMS","ms":"J10","msn":"DAM","wo":"WO-01224-26-03-00578","wod":"2026-03-28","ah":"[J10-01224] SETIA KAWAN MOTOR III","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC8114NK000197","md":"I01","mdn":"JHC","ms":"J10","msn":"DAM","wo":"WO-13060-26-04-00504","wod":"2026-04-10","ah":"[J10-13060] BEKASI MOTOR","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC7117PK000997","md":"J10","mdn":"DAM","ms":"K0Z","msn":"HSO - SMG","wo":"H375-PKB-2606674","wod":"2026-03-19","ah":"[K0Z-09693] ASTRA MOTOR SLAWI","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC7112PK001099","md":"L01","mdn":"HSO - YGY","ms":"L01","msn":"HSO - YGY","wo":"H366-PKB-2605462","wod":"2026-02-08","ah":"[L01-00009] NDS JOMBOR","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7113PK000916","md":"L01","mdn":"HSO - YGY","ms":"L01","msn":"HSO - YGY","wo":"00545-PKB-2602879","wod":"2026-03-14","ah":"[L01-00545] CV INDAH MOTOR","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8118PK000576","md":"L01","mdn":"HSO - YGY","ms":"L01","msn":"HSO - YGY","wo":"12112-PKB-2611759","wod":"2026-04-12","ah":"[L01-12112] UD. Utama Abadi Motor","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8213PK000855","md":"L01","mdn":"HSO - YGY","ms":"L01","msn":"HSO - YGY","wo":"01017-PKB-2602186","wod":"2026-03-05","ah":"[L01-01017] NUSANTARA SAKTI","nt":"Servis di MD yang sama"},{"f":"CUV1","rk":"MH1EF3217SK000817","md":"L01","mdn":"HSO - YGY","ms":"L01","msn":"HSO - YGY","wo":"H366-PKB-2611519","wod":"2026-03-28","ah":"[L01-00009] NDS JOMBOR","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7114PK000827","md":"M2Z","mdn":"MPM - SBY","ms":"M2Z","msn":"MPM - SBY","wo":"Z0190-PKB-2026-DMS0000001966","wod":"2026-02-25","ah":"[M2Z-05655] PT SATRYA DELTA PERSADA","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC711XPK001156","md":"M2Z","mdn":"MPM - SBY","ms":"M2Z","msn":"MPM - SBY","wo":"H2027-PKB-2026-DMS0000001431","wod":"2026-04-19","ah":"[M2Z-12486] Merdeka Jaya Motor","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8210NK000325","md":"M2Z","mdn":"MPM - SBY","ms":"M2Z","msn":"MPM - SBY","wo":"C0020-PKB-2026-DMS0000003024","wod":"2026-04-16","ah":"[M2Z-00517] GALAXY MOTOR","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8210NK000339","md":"M2Z","mdn":"MPM - SBY","ms":"M2Z","msn":"MPM - SBY","wo":"H2045-PKB-2026-DMS0000004185","wod":"2026-04-24","ah":"[M2Z-16411] UD. Pratama Metropolis","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8217PK000535","md":"M2Z","mdn":"MPM - SBY","ms":"M2Z","msn":"MPM - SBY","wo":"051-PKB-2026-DMS0000005015","wod":"2026-03-25","ah":"[M2Z-00006] MITRA PINASTHIKA MUSTIKA TBK.","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8217NK000354","md":"M2Z","mdn":"MPM - SBY","ms":"M3Z","msn":"MPM - MLG","wo":"026-PKB-2026-DMS0000003695","wod":"2026-04-17","ah":"[M3Z-02725] MITRA PINASTHIKA MUSTIKA TBK.","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC7110PK001151","md":"N01","mdn":"HSO - DPS","ms":"N01","msn":"HSO - DPS","wo":"H552-PKB-2605898","wod":"2026-02-12","ah":"[N01-00004] ASTRA MOTOR - HOS COKROAMINOTO (NDS)","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7119PK001293","md":"N02","mdn":"HSO - MTR","ms":"N02","msn":"HSO - MTR","wo":"00280-PKB-2602951","wod":"2026-03-24","ah":"[N02-00280] KRIDA DINAMIKAUTONUSA","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7115PK000982","md":"R4Z","mdn":"HSO - BPP","ms":"R4Z","msn":"HSO - BPP","wo":"H701-PKB-2604861","wod":"2026-03-17","ah":"[R4Z-11003] SALES OFFICE MT. HARYONO","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7119PK001276","md":"R5Z","mdn":"HSO - SMD","ms":"R4Z","msn":"HSO - BPP","wo":"H701-PKB-2603108","wod":"2026-02-20","ah":"[R4Z-11003] SALES OFFICE MT. HARYONO","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC7113PK001287","md":"R5Z","mdn":"HSO - SMD","ms":"R5Z","msn":"HSO - SMD","wo":"H709-PKB-2604450","wod":"2026-02-12","ah":"[R5Z-16531] PT ASTRA INTERNATIONAL TBK - HONDA","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7115PK000979","md":"R5Z","mdn":"HSO - SMD","ms":"R5Z","msn":"HSO - SMD","wo":"H714-PKB-2606333","wod":"2026-03-30","ah":"[R5Z-16643] ASTRA MOTOR BONTANG","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7115PK001193","md":"R5Z","mdn":"HSO - SMD","ms":"R5Z","msn":"HSO - SMD","wo":"H708-PKB-2606668","wod":"2026-03-05","ah":"[R5Z-16456] Astra Motor Samarinda 1","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8111PK000550","md":"R5Z","mdn":"HSO - SMD","ms":"R5Z","msn":"HSO - SMD","wo":"H711-PKB-2605225","wod":"2026-03-05","ah":"[R5Z-16454] PT ASTRA INTERNATIONAL TBK - HONDA","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8111PK000631","md":"R5Z","mdn":"HSO - SMD","ms":"R5Z","msn":"HSO - SMD","wo":"H709-PKB-2604136","wod":"2026-02-09","ah":"[R5Z-16531] PT ASTRA INTERNATIONAL TBK - HONDA","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8114PK000333","md":"R4Z","mdn":"HSO - BPP","ms":"R5Z","msn":"HSO - SMD","wo":"06999-PKB-2607062","wod":"2026-04-11","ah":"[R5Z-06999] CV PLAZA MOTOR","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC8213PK000645","md":"R5Z","mdn":"HSO - SMD","ms":"R5Z","msn":"HSO - SMD","wo":"H714-PKB-2607211","wod":"2026-04-11","ah":"[R5Z-16643] ASTRA MOTOR BONTANG","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8214PK000671","md":"R5Z","mdn":"HSO - SMD","ms":"R5Z","msn":"HSO - SMD","wo":"H709-PKB-2603984","wod":"2026-02-07","ah":"[R5Z-16531] PT ASTRA INTERNATIONAL TBK - HONDA","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8116PK000625","md":"T10","mdn":"TRIO","ms":"T10","msn":"TRIO","wo":"WOB6R202604-09953","wod":"2026-04-19","ah":"[T10-01199] TRIO MOTOR BATULICIN","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8212PK000765","md":"T10","mdn":"TRIO","ms":"T10","msn":"TRIO","wo":"WOT8202602-02124","wod":"2026-02-07","ah":"[T10-00953] BUDIANA SATU LIMA ENAM","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8217NK000287","md":"T10","mdn":"TRIO","ms":"T10","msn":"TRIO","wo":"WOT13202602-11733","wod":"2026-02-28","ah":"[T10-00017] TRIO MOTOR PERINTIS","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7114PK001346","md":"U10","mdn":"DAW","ms":"U10","msn":"DAW","wo":"WO-16759-26-02-02152","wod":"2026-02-25","ah":"[U10-16759] Tridjaya Maju Sukses","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8211NK000284","md":"V2Z","mdn":"AP","ms":"V2Z","msn":"AP","wo":"SA27.2604.0040","wod":"2026-04-27","ah":"[V2Z-17728] PO. PLANET MOTOR","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC7114PK000858","md":"W01","mdn":"HSO - MKS","ms":"W01","msn":"HSO - MKS","wo":"06376-PKB-2604478","wod":"2026-04-27","ah":"[W01-06376] JAYA","nt":"Servis di MD yang sama"},{"f":"CBR250","rk":"MH1MC8211PK000904","md":"R4Z","mdn":"HSO - BPP","ms":"W01","msn":"HSO - MKS","wo":"H770-PKB-2607229","wod":"2026-03-11","ah":"[W01-05555] SALES OFFICE KENDARI","nt":"Servis di MD berbeda"},{"f":"CBR250","rk":"MH1MC8212PK000443","md":"W01","mdn":"HSO - MKS","ms":"W01","msn":"HSO - MKS","wo":"H759-PKB-2616854","wod":"2026-04-18","ah":"[W01-00007] SALES OFFICE ALAUDDIN","nt":"Servis di MD yang sama"}]
+;
 
 /* ================= LIVE SYNC — SPREADSHEET DATABASE PENGERJAAN PUD ================= */
 const SHEET_ID = '1h0x6iGnYsquSueq8gKy9pIEXNZ0HqwYcq3BlSgTcu6w';
@@ -856,6 +914,7 @@ function renderAll(){
   renderMDRanking(data);
   renderDeklarasiInfo();
   renderHeatmap(data);
+  renderLossHeatmap();
   renderMigration(data);
 }
 
@@ -918,7 +977,7 @@ function renderKPIs(data){
 
   document.getElementById('kpiRow').innerHTML = `
     <div class="kpi" style="--accent:var(--teal)"><div class="l">Total Unit Target</div><div class="v">${total.toLocaleString('id-ID')}</div><div class="s">Sesuai filter aktif</div></div>
-    <div class="kpi" style="--accent:#16A34A"><div class="l">Sudah Diproses</div><div class="v">${pct}%</div><div class="s">${done.toLocaleString('id-ID')} unit</div></div>
+    <div class="kpi" style="--accent:#16A34A"><div class="l">Sudah Dikerjakan + Deklarasi</div><div class="v">${pct}%</div><div class="s">${done.toLocaleString('id-ID')} unit</div></div>
     <div class="kpi" style="--accent:#F59E0B"><div class="l">Belum Dikerjakan</div><div class="v">${pendingPct}%</div><div class="s">${pending.toLocaleString('id-ID')} unit</div></div>
     <div class="kpi" style="--accent:var(--red)"><div class="l">Pindah Wilayah</div><div class="v">${pindah}</div><div class="s">unit lintas MD</div></div>
   `;
@@ -1165,9 +1224,9 @@ function renderReason(data){
    kuning (deklarasi / butuh tindak lanjut administratif), merah (belum diproses),
    abu-abu untuk sel kosong. Warna dipilih agar familiar dengan indikator harian PQM. */
 const HEAT_STATUS_DEFS = [
-  {key:'pengerjaan', label:'Pengerjaan', rgb:'22,163,74'},   /* hijau */
-  {key:'deklarasi',  label:'Deklarasi',  rgb:'245,158,11'},  /* kuning */
-  {key:'belum',      label:'Belum Proses', rgb:'220,38,38'}, /* merah */
+  {key:'pengerjaan', label:'Sudah Dikerjakan', rgb:'22,163,74'},  /* hijau */
+  {key:'deklarasi',  label:'Deklarasi',        rgb:'245,158,11'}, /* kuning */
+  {key:'belum',      label:'Belum Dikerjakan', rgb:'220,38,38'},  /* merah */
 ];
 
 function renderDeklarasiInfo(){
@@ -1324,10 +1383,14 @@ function renderHeatmap(data){
     const b = bucket(r);
     byMD[md][b][r.f] = (byMD[md][b][r.f]||0)+1;
   });
-  const rows = Object.entries(byMD).map(([code,v])=>{
-    const totalAll = pudLabels.reduce((sum,l)=> sum + (v.pengerjaan[l]||0)+(v.deklarasi[l]||0)+(v.belum[l]||0), 0);
-    return {code, v, totalAll};
-  }).sort((a,b)=>b.totalAll-a.totalAll);
+  const rows = Object.entries(byMD)
+    /* Sembunyikan MD tak terdaftar (AHM Head Office, HM, <not registered>) dari heatmap —
+       fokus ke 29 MD resmi. Record mereka tetap dihitung di KPI atas. */
+    .filter(([code])=>!UNREGISTERED_MD.includes(code))
+    .map(([code,v])=>{
+      const totalAll = pudLabels.reduce((sum,l)=> sum + (v.pengerjaan[l]||0)+(v.deklarasi[l]||0)+(v.belum[l]||0), 0);
+      return {code, v, totalAll};
+    }).sort((a,b)=>b.totalAll-a.totalAll);
 
   const max = Math.max(1, ...rows.flatMap(r=>pudLabels.map(l=>
     Math.max(r.v.pengerjaan[l]||0, r.v.deklarasi[l]||0, r.v.belum[l]||0)
@@ -1385,6 +1448,134 @@ function downloadHeatmapDetail(){
 }
 
 function migPair(r){ return r.mg ? r.mg.split('>') : null; }
+
+/* ================= LOSS PUD ================= */
+/* Filter data loss mengikuti filter global (Wilayah / Main Dealer / Jenis PUD).
+   MD acuan untuk loss = MD tempat servis (r.ms), yaitu MD yang "kehilangan" unit PUD karena
+   sudah masuk AHASS-nya tapi tidak dikerjakan sebagai PUD. */
+function getFilteredLoss(){
+  const q = document.getElementById('unitSearch').value.trim().toLowerCase();
+  return LOSS_DATA.filter(r=>{
+    if(!activeFilters.puds.has(r.f)) return false;
+    if(!activeFilters.mds.has(r.ms)) return false;
+    if(activeFilters.region!=='all' && MD_REGION[r.ms]!==activeFilters.region) return false;
+    if(q){
+      const hay = `${r.rk||''} ${r.ah||''} ${r.wo||''}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function mdDisplayName(code, fallback){
+  return MD_NAMES[code] || fallback || code;
+}
+
+function renderLossHeatmap(){
+  const data = getFilteredLoss();
+  document.getElementById('lossTotal').textContent = data.length.toLocaleString('id-ID');
+
+  const table = document.getElementById('lossTable');
+  if(!data.length){
+    table.innerHTML = `<tr><td class="empty-note" style="padding:30px;">Tidak ada unit loss PUD pada filter saat ini.</td></tr>`;
+    return;
+  }
+
+  /* Ambil bulan-bulan yang muncul di data (YYYY-MM), urutkan naik */
+  const monthSet = new Set();
+  data.forEach(r=>{ if(r.wod) monthSet.add(r.wod.slice(0,7)); });
+  const months = [...monthSet].sort();
+  const monthLabel = ym => {
+    const [y,m] = ym.split('-'); return MONTHS_SHORT[parseInt(m,10)-1]+" '"+y.slice(2);
+  };
+
+  /* Group: MD servis (ms) → jenis PUD → month → array of records */
+  const byMDPUD = {};
+  data.forEach(r=>{
+    const key = r.ms+'||'+r.f;
+    if(!byMDPUD[key]) byMDPUD[key] = {ms:r.ms, msn:r.msn, f:r.f, months:{}, total:0};
+    const m = r.wod ? r.wod.slice(0,7) : 'unknown';
+    if(!byMDPUD[key].months[m]) byMDPUD[key].months[m] = [];
+    byMDPUD[key].months[m].push(r);
+    byMDPUD[key].total++;
+  });
+  /* Sort: MD dulu (kode asc), lalu PUD (label asc) */
+  const rows = Object.values(byMDPUD).sort((a,b)=>{
+    if(a.ms!==b.ms) return a.ms.localeCompare(b.ms);
+    return a.f.localeCompare(b.f);
+  });
+
+  const max = Math.max(1, ...rows.flatMap(row=>months.map(m=>(row.months[m]||[]).length)));
+
+  const head = `<tr>
+    <th class="md-col">Main Dealer (Loss)</th>
+    <th class="pud-col">Jenis PUD</th>
+    ${months.map(m=>`<th>${monthLabel(m)}</th>`).join('')}
+    <th>Total</th>
+  </tr>`;
+
+  /* Kelompokkan visual per MD: baris pertama tiap grup MD pakai rowspan untuk kolom MD */
+  let body = '';
+  let lastMD = null;
+  rows.forEach((row,i)=>{
+    const isFirstOfMD = row.ms!==lastMD;
+    let mdRowspan = 0;
+    if(isFirstOfMD){
+      mdRowspan = rows.filter(r=>r.ms===row.ms).length;
+      lastMD = row.ms;
+    }
+    const mdCell = isFirstOfMD
+      ? `<td class="md-name" rowspan="${mdRowspan}"><span class="code">${row.ms}</span>${mdDisplayName(row.ms, row.msn)}</td>`
+      : '';
+    const cells = months.map(m=>{
+      const items = row.months[m] || [];
+      const v = items.length;
+      if(!v) return `<td><div class="loss-cell empty">–</div></td>`;
+      const alpha = 0.22 + (v/max)*0.68;
+      const color = alpha>0.55?'#fff':'#5B0F14';
+      return `<td><div class="loss-cell" style="background:rgba(220,38,38,${alpha}); color:${color}"
+                  onclick="openLossDetail('${row.ms}','${row.f}','${m}')">${v}</div></td>`;
+    }).join('');
+    body += `<tr>${mdCell}<td class="pud-name">${row.f}</td>${cells}<td class="total-cell">${row.total}</td></tr>`;
+  });
+
+  table.innerHTML = `<thead>${head}</thead><tbody>${body}</tbody>`;
+}
+
+function openLossDetail(msCode, pudLabel, ymKey){
+  const data = getFilteredLoss().filter(r=>r.ms===msCode && r.f===pudLabel && r.wod && r.wod.slice(0,7)===ymKey);
+  const [y,m] = ymKey.split('-');
+  const monthTxt = MONTHS_SHORT[parseInt(m,10)-1]+" '"+y.slice(2);
+  document.getElementById('modalTitle').textContent = `Loss PUD ${pudLabel} — ${mdDisplayName(msCode, '')} (${msCode}) · ${monthTxt}`;
+  document.getElementById('modalSub').textContent = `${data.length} unit loss`;
+  const rows = data.map(r=>{
+    const beda = (r.md && r.ms && r.md!==r.ms);
+    const asal = r.mdn ? `${r.mdn} <span class="mono" style="color:#9AA3AF;">(${r.md})</span>` : (r.md||'-');
+    const badgeStyle = beda
+      ? 'background:#FEE2E2;color:#991B1B;'
+      : 'background:#DCFCE7;color:#166534;';
+    const badgeText = beda ? 'MD berbeda' : 'MD sama';
+    return `<tr>
+      <td class="mono">${r.rk||'-'}</td>
+      <td>${asal}</td>
+      <td>${r.wod||'-'}</td>
+      <td>${r.ah||'-'}</td>
+      <td><span class="status-badge" style="${badgeStyle}">${badgeText}</span></td>
+      <td style="font-size:11px;">${r.nt||'-'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('modalTable').innerHTML = `
+    <thead><tr>
+      <th>No. Rangka</th>
+      <th>MD Distribusi Asal</th>
+      <th>Tgl. Work Order</th>
+      <th>AHASS (Last Service)</th>
+      <th>Servis</th>
+      <th>Keterangan</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
 
 function renderMigration(data){
   const mig = data.filter(r=>r.mg);
