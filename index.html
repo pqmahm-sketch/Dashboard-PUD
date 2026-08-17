@@ -94,13 +94,13 @@
   table.heat{border-collapse:collapse; width:100%; font-size:11.5px; min-width:820px;}
   table.heat th{text-align:center; padding:8px 8px; font-size:10px; text-transform:uppercase; color:var(--ink-soft); letter-spacing:.4px; background:#F8F9FB; border-bottom:1px solid var(--line); border-right:1px solid var(--line); position:sticky; top:0; z-index:2;}
   table.heat th:last-child{border-right:none;}
-  table.heat th.md-col{text-align:left; min-width:190px; left:0; z-index:3; background:#F8F9FB;}
-  table.heat th.status-col{text-align:left; min-width:100px; left:190px; z-index:3; background:#F8F9FB;}
-  td.status-cell{text-align:left; padding:6px 8px; font-size:10.5px; font-weight:700; color:var(--ink-soft); white-space:nowrap; border-right:1px solid var(--line); border-bottom:1px solid var(--line); background:#fff; position:sticky; left:190px; z-index:1;}
+  table.heat th.md-col{text-align:center; min-width:190px; left:0; z-index:3; background:#F8F9FB;}
+  table.heat th.status-col{text-align:center; min-width:100px; left:190px; z-index:3; background:#F8F9FB;}
+  td.status-cell{text-align:center; padding:6px 8px; font-size:10.5px; font-weight:700; color:var(--ink-soft); white-space:nowrap; border-right:1px solid var(--line); border-bottom:1px solid var(--line); background:#fff; position:sticky; left:190px; z-index:1;}
   table.heat td{padding:4px; text-align:center; border-right:1px solid var(--line); border-bottom:1px solid var(--line);}
   table.heat td:last-child{border-right:none;}
   table.heat tr:last-child td{border-bottom:none;}
-  table.heat td.md-name{text-align:left; font-weight:700; font-size:12px; padding:6px 8px; white-space:nowrap; background:#fff; position:sticky; left:0; z-index:1; border-right:1px solid var(--line);}
+  table.heat td.md-name{text-align:center; font-weight:700; font-size:12px; padding:6px 8px; white-space:nowrap; background:#fff; position:sticky; left:0; z-index:1; border-right:1px solid var(--line);}
   table.heat td.md-name .code{color:#9AA3AF; font-weight:600; font-family:'IBM Plex Mono',monospace; font-size:10px; margin-right:5px;}
   .heat-cell{width:52px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:700; font-family:'IBM Plex Mono', monospace; font-size:11.5px; cursor:pointer; margin:0 auto; transition:transform .1s;}
   .heat-cell:hover{transform:scale(1.08); box-shadow:0 3px 10px rgba(0,0,0,.15);}
@@ -288,23 +288,25 @@
     </div>
   </div>
 
-  <div class="card" style="margin-bottom:16px;">
-    <h3>Capaian per Jenis PUD</h3>
-    <div class="sub" id="capaianSub">Persentase capaian per jenis PUD</div>
-    <div class="chart-wrap tall"><canvas id="capaianChart"></canvas></div>
-  </div>
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <h3>Capaian per Jenis PUD</h3>
+      <div class="sub" id="capaianSub">Persentase capaian per jenis PUD</div>
+      <div class="chart-wrap tall"><canvas id="capaianChart"></canvas></div>
+    </div>
 
-  <div class="card" style="margin-bottom:16px;">
-    <h3>Peringkat Achievement PUD per MD (terendah-tertinggi)</h3>
-    <div class="sub">Persentase capaian (pengerjaan + deklarasi) per Main Dealer, sesuai filter aktif di atas</div>
-    <div class="rank-scroll" id="rankList" style="margin-top:10px;"></div>
-    <div class="rank-legend">
-      <span class="lg-title">Legenda warna:</span>
-      <div class="lg-group"><span class="lg-swatch" style="background:#DC2626"></span>&lt; 50% — Perlu perhatian serius</div>
-      <div class="lg-group"><span class="lg-swatch" style="background:#F97316"></span>50–69% — Kurang</div>
-      <div class="lg-group"><span class="lg-swatch" style="background:#D6A93B"></span>70–90% — Kurang Baik</div>
-      <div class="lg-group"><span class="lg-swatch" style="background:#16A34A"></span>&gt; 90% — Baik</div>
-      <div class="lg-group"><span class="lg-swatch" style="background:#D8DCE2"></span>0% — Belum ada progress</div>
+    <div class="card">
+      <h3>Peringkat Achievement PUD per MD</h3>
+      <div class="sub">Terendah → tertinggi, sesuai filter aktif</div>
+      <div class="rank-scroll" id="rankList" style="margin-top:10px; max-height:340px;"></div>
+      <div class="rank-legend">
+        <span class="lg-title">Legenda warna:</span>
+        <div class="lg-group"><span class="lg-swatch" style="background:#DC2626"></span>&lt; 50%</div>
+        <div class="lg-group"><span class="lg-swatch" style="background:#F97316"></span>50–69%</div>
+        <div class="lg-group"><span class="lg-swatch" style="background:#D6A93B"></span>70–90%</div>
+        <div class="lg-group"><span class="lg-swatch" style="background:#16A34A"></span>&gt; 90%</div>
+        <div class="lg-group"><span class="lg-swatch" style="background:#D8DCE2"></span>0%</div>
+      </div>
     </div>
   </div>
 
@@ -362,20 +364,24 @@
       <h4 style="margin:20px 0 2px; font-size:13px; font-weight:800;">Tren Deklarasi per Bulan — Komposisi Jenis PUD</h4>
       <div class="sub" style="margin-bottom:10px;">Angka pada tiap segmen = jumlah deklarasi jenis PUD tersebut di bulan itu</div>
       <div class="chart-wrap" style="height:320px;"><canvas id="dekTrendChart"></canvas></div>
-
-      <h4 style="margin:26px 0 2px; font-size:13px; font-weight:800;">Jenis PUD × Status Deklarasi</h4>
-      <div class="sub" style="margin-bottom:10px;">Komposisi alasan deklarasi tiap jenis PUD, sesuai filter aktif di atas halaman</div>
-      <div class="chart-wrap" id="dekMatrixWrap" style="height:280px;"><canvas id="dekReasonMatrixChart"></canvas></div>
     </div>
   </div>
 
-  <div class="card" style="margin-bottom:16px;">
-    <h3>Rincian Alasan Deklarasi</h3>
-    <div class="sub">Distribusi alasan pada unit yang sudah dideklarasi, sesuai filter aktif</div>
-    <div id="reasonEmpty" class="empty-note" style="display:none; border:1px dashed var(--line); border-radius:12px; margin-top:10px;">
-      Belum ada deklarasi yang masuk untuk kombinasi filter ini.
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <h3>Jenis PUD × Status Deklarasi</h3>
+      <div class="sub">Komposisi alasan deklarasi tiap jenis PUD, sesuai filter aktif</div>
+      <div class="chart-wrap tall" id="dekMatrixWrap"><canvas id="dekReasonMatrixChart"></canvas></div>
     </div>
-    <div id="reasonWrap" class="chart-wrap tall"><canvas id="reasonChart"></canvas></div>
+
+    <div class="card">
+      <h3>Rincian Alasan Deklarasi</h3>
+      <div class="sub">Distribusi alasan pada unit yang sudah dideklarasi, sesuai filter aktif</div>
+      <div id="reasonEmpty" class="empty-note" style="display:none; border:1px dashed var(--line); border-radius:12px; margin-top:10px;">
+        Belum ada deklarasi yang masuk untuk kombinasi filter ini.
+      </div>
+      <div id="reasonWrap" class="chart-wrap tall"><canvas id="reasonChart"></canvas></div>
+    </div>
   </div>
 
   <hr class="group-divider">
