@@ -225,9 +225,21 @@
       </div>
     </div>
 
-    <div class="filter-group" style="flex:1; min-width:280px;">
+    <div class="filter-group">
       <label class="fg-title">Jenis PUD — Fokus Monitoring 2026</label>
-      <div class="pud-chips" id="pudChips"></div>
+      <div class="dropdown">
+        <button class="dd-btn" id="pudBtn" onclick="toggleDD('pudPanel')">
+          <span id="pudBtnLabel">Semua Jenis PUD</span>
+          <span class="dd-count" id="pudCount" style="display:none;"></span>
+        </button>
+        <div class="dd-panel" id="pudPanel">
+          <div class="dd-actions">
+            <button onclick="selectAllPUD(true)">Pilih Semua</button>
+            <button onclick="selectAllPUD(false)">Kosongkan</button>
+          </div>
+          <div id="pudList"></div>
+        </div>
+      </div>
     </div>
 
     <div class="filter-group">
@@ -373,6 +385,30 @@
       <h2>Unit Loss PUD</h2>
       <p>Unit PUD yang sudah masuk ke AHASS tapi tidak dikerjakan sebagai PUD. Dikelompokkan per Main Dealer tempat servis × jenis PUD × bulan Work Order.</p>
     </div>
+  </div>
+
+  <div class="kpis" id="lossKpiRow" style="margin-bottom:16px;"></div>
+
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <h3>Top Main Dealer dengan Loss Terbanyak</h3>
+      <div class="sub">MD yang paling banyak kehilangan unit PUD — pintu masuk perbaikan proses AHASS-nya</div>
+      <div id="lossMDEmpty" class="empty-note" style="display:none;">Tidak ada data pada filter saat ini.</div>
+      <div id="lossMDList" class="rank-scroll" style="margin-top:10px; max-height:340px;"></div>
+    </div>
+    <div class="card">
+      <h3>Komposisi Loss: MD Sama vs MD Berbeda</h3>
+      <div class="sub">Loss "MD Berbeda" = unit distribusi MD X tapi masuk AHASS MD Y — indikator lintas-wilayah</div>
+      <div class="chart-wrap" style="height:230px;"><canvas id="lossCompChart"></canvas></div>
+      <div id="lossCompNote" style="text-align:center; margin-top:8px; font-size:12px; color:var(--ink-soft);"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h3>Top AHASS Titik Loss</h3>
+    <div class="sub">AHASS mana yang paling sering ada unit PUD masuk tapi tidak dikerjakan PUD — kandidat coaching / audit</div>
+    <div id="lossAHASSEmpty" class="empty-note" style="display:none;">Tidak ada data pada filter saat ini.</div>
+    <div id="lossAHASSList" class="rank-scroll" style="margin-top:10px; max-height:340px;"></div>
   </div>
 
   <div class="card" style="margin-bottom:16px;">
@@ -815,21 +851,34 @@ document.getElementById('trendPeriodSeg').addEventListener('click', e=>{
   trendPeriod = e.target.dataset.trend;
   renderTrend(getFiltered());
 });
-function buildPudChips(){
-  const wrap = document.getElementById('pudChips');
-  wrap.innerHTML = '';
+function renderPUDList(){
+  const list = document.getElementById('pudList');
+  list.innerHTML = '';
   PUD_FOCUS.forEach(p=>{
-    const chip = document.createElement('div');
-    chip.className = 'chip';
-    chip.innerHTML = `<span class="sw" style="background:${p.color}"></span>${p.label}`;
-    chip.onclick = ()=>{
-      if(activeFilters.puds.has(p.label)) activeFilters.puds.delete(p.label);
-      else activeFilters.puds.add(p.label);
-      chip.classList.toggle('off', !activeFilters.puds.has(p.label));
+    const row = document.createElement('label');
+    row.className = 'dd-item';
+    const checked = activeFilters.puds.has(p.label);
+    row.innerHTML = `<input type="checkbox" ${checked?'checked':''}>
+      <span class="sw" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p.color};margin-right:2px;"></span>
+      ${p.label}`;
+    row.querySelector('input').onchange = (ev)=>{
+      if(ev.target.checked) activeFilters.puds.add(p.label);
+      else activeFilters.puds.delete(p.label);
+      updatePUDBtnLabel();
       renderAll();
     };
-    wrap.appendChild(chip);
+    list.appendChild(row);
   });
+}
+function selectAllPUD(all){
+  activeFilters.puds = all ? new Set(PUD_FOCUS.map(p=>p.label)) : new Set();
+  renderPUDList(); updatePUDBtnLabel(); renderAll();
+}
+function updatePUDBtnLabel(){
+  const total = PUD_FOCUS.length, sel = activeFilters.puds.size;
+  document.getElementById('pudBtnLabel').textContent = sel===total ? 'Semua Jenis PUD' : (sel===0 ? 'Tidak ada dipilih' : `${sel} PUD dipilih`);
+  const c = document.getElementById('pudCount');
+  if(sel<total){ c.style.display='inline-block'; c.textContent = sel; } else { c.style.display='none'; }
 }
 
 function toggleDD(id){
@@ -867,9 +916,10 @@ function updateMDBtnLabel(){
 function resetFilters(){
   activeFilters = { region:'all', mds:new Set(ALL_MD_CODES), puds:new Set(PUD_FOCUS.map(p=>p.label)) };
   document.querySelectorAll('#regionSeg button').forEach(b=>b.classList.toggle('active', b.dataset.region==='all'));
-  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('off'));
   document.getElementById('unitSearch').value='';
-  renderMDList(); updateMDBtnLabel(); renderAll();
+  renderMDList(); updateMDBtnLabel();
+  renderPUDList(); updatePUDBtnLabel();
+  renderAll();
 }
 
 /* ================= DATA SHAPING ================= */
@@ -1265,9 +1315,12 @@ function renderDeklarasiInfo(){
   const monthsWithData = keepIdx.length || 1;
   const rata2 = total / monthsWithData;
   const mdAktif = new Set(data.map(r=>effectiveMD(r))).size;
-  /* Pembagi "MD terpilih" harus menghormati filter wilayah — kalau region 2 dipilih,
-     hanya MD region 2 yang ikut dihitung sebagai denominator. */
-  const mdSelectedInRegion = [...activeFilters.mds].filter(code=>{
+  /* Pembagi "MD terpilih" hanya menghitung 29 MD resmi yang ada di LOV (VISIBLE_MD_CODES),
+     dan menghormati filter wilayah — kalau region 2 dipilih, hanya MD resmi region 2 yang
+     ikut dihitung sebagai denominator. MD tak terdaftar (AHM/HM/<not registered>) tidak
+     dihitung meskipun secara default masih masuk activeFilters.mds. */
+  const mdSelectedInRegion = VISIBLE_MD_CODES.filter(code=>{
+    if(!activeFilters.mds.has(code)) return false;
     if(activeFilters.region==='all') return true;
     return MD_REGION[code]===activeFilters.region;
   });
@@ -1471,8 +1524,99 @@ function mdDisplayName(code, fallback){
   return MD_NAMES[code] || fallback || code;
 }
 
+function renderLossKPIs(data){
+  const total = data.length;
+  const berbeda = data.filter(r=>r.md && r.ms && r.md!==r.ms).length;
+  const sama = total - berbeda;
+  const mdSet = new Set(data.map(r=>r.ms));
+  const ahassSet = new Set(data.map(r=>r.ah).filter(Boolean));
+  document.getElementById('lossKpiRow').innerHTML = `
+    <div class="kpi" style="--accent:var(--bad)"><div class="l">Total Loss PUD</div><div class="v">${total.toLocaleString('id-ID')}</div><div class="s">Unit yang masuk AHASS tapi tidak dikerjakan PUD</div></div>
+    <div class="kpi" style="--accent:#F97316"><div class="l">MD Terdampak</div><div class="v">${mdSet.size}</div><div class="s">Main Dealer yang punya loss PUD</div></div>
+    <div class="kpi" style="--accent:#0EA5E9"><div class="l">AHASS Terdampak</div><div class="v">${ahassSet.size}</div><div class="s">AHASS berbeda yang jadi titik loss</div></div>
+    <div class="kpi" style="--accent:var(--teal)"><div class="l">Servis di MD Berbeda</div><div class="v">${total? Math.round(berbeda/total*100):0}%</div><div class="s">${berbeda} dari ${total} unit</div></div>
+  `;
+}
+
+function renderLossMDRanking(data){
+  const wrap = document.getElementById('lossMDList');
+  const empty = document.getElementById('lossMDEmpty');
+  const byMD = {};
+  data.forEach(r=>{
+    if(!byMD[r.ms]) byMD[r.ms] = {code:r.ms, name:mdDisplayName(r.ms, r.msn), total:0};
+    byMD[r.ms].total++;
+  });
+  const rows = Object.values(byMD).sort((a,b)=>b.total-a.total);
+  if(!rows.length){ empty.style.display='block'; wrap.innerHTML=''; return; }
+  empty.style.display='none';
+  const max = Math.max(1, ...rows.map(r=>r.total));
+  wrap.innerHTML = rows.map((r,i)=>{
+    const pct = r.total/max*100;
+    return `<div class="rank-row" title="${r.total} unit loss">
+      <div class="rank-num">${i+1}</div>
+      <div class="rank-name"><span class="code">${r.code}</span>${r.name}</div>
+      <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${Math.max(pct,4)}%; background:#DC2626"></div></div>
+      <div class="rank-pct" style="color:var(--bad); font-size:13px;">${r.total}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderLossComposition(data){
+  const berbeda = data.filter(r=>r.md && r.ms && r.md!==r.ms).length;
+  const sama = data.length - berbeda;
+  if(charts.lossComp) charts.lossComp.destroy();
+  const ctx = document.getElementById('lossCompChart');
+  if(!ctx) return;
+  if(!data.length){
+    ctx.getContext('2d').clearRect(0,0,9999,9999);
+    document.getElementById('lossCompNote').textContent = '';
+    return;
+  }
+  charts.lossComp = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels:[`Servis di MD Sama — ${sama} (${Math.round(sama/data.length*100)}%)`, `Servis di MD Berbeda — ${berbeda} (${Math.round(berbeda/data.length*100)}%)`],
+      datasets:[{ data:[sama, berbeda], backgroundColor:['#16A34A','#DC2626'], borderColor:'#fff', borderWidth:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins:{ legend:{position:'bottom', labels:{boxWidth:9,font:{size:10.5}}},
+        tooltip:{callbacks:{label:(c)=>`${c.parsed} unit`}} } }
+  });
+  document.getElementById('lossCompNote').textContent = berbeda>sama
+    ? 'Mayoritas loss datang dari servis lintas MD — perbaikan koordinasi antar-region penting.'
+    : 'Mayoritas loss internal (di AHASS MD sendiri) — coaching mekanik & alur registrasi PUD di AHASS jadi kunci.';
+}
+
+function renderLossAHASSRanking(data){
+  const wrap = document.getElementById('lossAHASSList');
+  const empty = document.getElementById('lossAHASSEmpty');
+  const byAH = {};
+  data.forEach(r=>{
+    if(!r.ah) return;
+    if(!byAH[r.ah]) byAH[r.ah] = {name:r.ah, total:0, mds:new Set()};
+    byAH[r.ah].total++;
+    byAH[r.ah].mds.add(r.ms);
+  });
+  const rows = Object.values(byAH).sort((a,b)=>b.total-a.total).slice(0, 15);
+  if(!rows.length){ empty.style.display='block'; wrap.innerHTML=''; return; }
+  empty.style.display='none';
+  const max = Math.max(1, ...rows.map(r=>r.total));
+  wrap.innerHTML = rows.map((r,i)=>{
+    const pct = r.total/max*100;
+    /* Format: "[B10-04121] INDAKO ..." → tampilkan kode di depan */
+    return `<div class="rank-row" title="${r.total} unit loss di AHASS ini">
+      <div class="rank-num">${i+1}</div>
+      <div class="rank-name" style="width:auto; min-width:0; flex:1 1 200px; white-space:normal; line-height:1.3;">${r.name}</div>
+      <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${Math.max(pct,4)}%; background:#DC2626"></div></div>
+      <div class="rank-pct" style="color:var(--bad); font-size:13px;">${r.total}</div>
+    </div>`;
+  }).join('');
+}
+
 function renderLossHeatmap(){
   const data = getFilteredLoss();
+  renderLossKPIs(data);
+  renderLossMDRanking(data);
+  renderLossComposition(data);
+  renderLossAHASSRanking(data);
   document.getElementById('lossTotal').textContent = data.length.toLocaleString('id-ID');
 
   const table = document.getElementById('lossTable');
@@ -1654,7 +1798,8 @@ function closeModal(){ document.getElementById('modalOverlay').classList.remove(
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
 
 /* ================= INIT ================= */
-buildPudChips();
+renderPUDList();
+updatePUDBtnLabel();
 buildOtherTypes();
 renderMDList();
 updateMDBtnLabel();
