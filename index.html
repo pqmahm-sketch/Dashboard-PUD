@@ -1606,10 +1606,15 @@ function migPair(r){ return r.mg ? r.mg.split('>') : null; }
 /* Filter data loss mengikuti filter global (Wilayah / Main Dealer / Jenis PUD).
    MD acuan untuk loss = MD tempat servis (r.ms), yaitu MD yang "kehilangan" unit PUD karena
    sudah masuk AHASS-nya tapi tidak dikerjakan sebagai PUD. */
+const PUD_FOCUS_LABELS = new Set(PUD_FOCUS.map(p=>p.label));
 function getFilteredLoss(){
   const q = document.getElementById('unitSearch').value.trim().toLowerCase();
   return LOSS_DATA.filter(r=>{
-    if(!activeFilters.puds.has(r.f)) return false;
+    /* Filter Jenis PUD hanya berlaku untuk 8 jenis fokus yang ada di LOV.
+       Jenis di luar fokus (mis. CB500) tidak bisa dicentang di LOV, jadi selalu
+       diikutkan — kalau dibuang, total loss dashboard tidak akan pernah sama
+       dengan total baris di spreadsheet. */
+    if(PUD_FOCUS_LABELS.has(r.f) && !activeFilters.puds.has(r.f)) return false;
     if(!activeFilters.mds.has(r.ms)) return false;
     if(activeFilters.region!=='all' && MD_REGION[r.ms]!==activeFilters.region) return false;
     if(q){
