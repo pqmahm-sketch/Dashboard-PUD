@@ -428,7 +428,7 @@
           <div style="font-size:12px; color:var(--ink-soft);">Total: <b id="lossTotal" style="color:var(--ink); font-family:'IBM Plex Mono', monospace;">–</b> unit</div>
         </div>
       </div>
-      <div class="loss-scroll" style="overflow:auto; max-height:520px; border:1px solid var(--line); border-radius:10px; margin-top:12px;">
+      <div class="loss-scroll" style="overflow:auto; max-height:300px; border:1px solid var(--line); border-radius:10px; margin-top:12px;">
         <table class="loss" id="lossTable"></table>
       </div>
       <div class="heat-legend">
@@ -491,9 +491,13 @@ let LOSS_DATA = [{"f":"CBR250","rk":"MH1MC7117PK001261","md":"D2Z","mdn":"CDN - 
 /* ================= LIVE SYNC — SPREADSHEET DATABASE PENGERJAAN PUD ================= */
 const SHEET_ID = '1h0x6iGnYsquSueq8gKy9pIEXNZ0HqwYcq3BlSgTcu6w';
 const SHEET_GID = '0';
-/* Spreadsheet Loss PUD — sheet "Data Detail" (headers di baris 2, data mulai baris 3) */
+/* Spreadsheet Loss PUD — tab pertama (gid=0), header di baris 1, data mulai baris 2.
+   Kolom: A=No, B=Nama PUD, C=No Rangka, D=No Mesin, E=MD Distribution,
+   F=Initial MD Dist., G=MD Service, H=Initial MD Serv., I=Work Order No,
+   J=Work Order Date, K=AHASS (Last Service), L=AHASS (History Service).
+   Tidak ada kolom Note — keterangan MD sama/berbeda diturunkan dari E vs G. */
 const LOSS_SHEET_ID = '1btzHpgUWYwbOD9LMfR2aSz1YDMwb0qlNbxefPQ-WC1c';
-const LOSS_SHEET_NAME = 'Data Detail';
+const LOSS_SHEET_GID = '0';
 const REFRESH_INTERVAL_MS = 5*60*1000;
 
 function fetchGvizJSON(){
@@ -635,13 +639,30 @@ function fetchLossGvizJSON(){
     function cleanup(){ delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); }
     window[cbName] = function(json){ done=true; resolve(json); cleanup(); };
     const script = document.createElement('script');
-    /* headers=2 → gviz akan skip row 1 (judul "DETAIL DATA LOSS UNIT PUD") dan pakai row 2
-       sebagai header. Data mulai dari row 3. */
-    script.src = `https://docs.google.com/spreadsheets/d/${LOSS_SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(LOSS_SHEET_NAME)}&headers=2&tqx=out:json;responseHandler:${cbName}`;
+    script.src = `https://docs.google.com/spreadsheets/d/${LOSS_SHEET_ID}/gviz/tq?gid=${LOSS_SHEET_GID}&headers=1&tqx=out:json;responseHandler:${cbName}`;
     script.onerror = ()=>{ if(!done){ reject(new Error('Gagal memuat script loss data dari Google Sheets')); cleanup(); } };
     document.body.appendChild(script);
     setTimeout(()=>{ if(!done){ reject(new Error('Timeout memuat loss data')); cleanup(); } }, 25000);
   });
+}
+
+/* Parser tanggal loss: terima Date(...) gviz, ISO, dan teks "20-May-2026" / "20 May 2026".
+   Return "YYYY-MM-DD" atau null kalau tidak bisa diparse — record tanpa tanggal valid tetap
+   dihitung di Total tapi tidak dapat kolom bulan. */
+const EN_MONTH_IDX = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function parseLossDate(cell){
+  const v = parseGvizDateCell(cell);
+  if(!v) return null;
+  const s = String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  const m = s.match(/^(\d{1,2})[-\/ ]([A-Za-z]{3,})[-\/ ](\d{4})$/);
+  if(m){
+    const mi = EN_MONTH_IDX[m[2].slice(0,3).toLowerCase()];
+    if(mi!==undefined) return `${m[3]}-${String(mi+1).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+  }
+  const d = new Date(s);
+  if(!isNaN(d.getTime())) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return null;
 }
 
 function mapGvizLossRows(json){
@@ -649,9 +670,9 @@ function mapGvizLossRows(json){
   const out = [];
   rows.forEach(row=>{
     const c = row.c || [];
-    /* Kolom di sheet: A=No, B=Nama PUD, C=No Rangka, D=No Mesin,
-       E=MD Distribution, F=Initial MD Dist., G=MD Service, H=Initial MD Serv.,
-       I=Work Order No, J=Work Order Date, K=AHASS Last Service, L=AHASS History, M=Note */
+    /* Kolom (0-based): 0=No, 1=Nama PUD, 2=No Rangka, 3=No Mesin,
+       4=MD Distribution, 5=Initial MD Dist., 6=MD Service, 7=Initial MD Serv.,
+       8=Work Order No, 9=Work Order Date, 10=AHASS Last Service, 11=AHASS History */
     const pud = cellText(c[1]);
     const rangka = cellText(c[2]);
     if(!rangka || !pud) return;
@@ -660,6 +681,8 @@ function mapGvizLossRows(json){
     const mdSrv = cellText(c[6]).toUpperCase();
     const mdSrvName = cellText(c[7]);
     if(!mdSrv) return;
+    /* Keterangan diturunkan dari perbandingan MD Distribution (E) vs MD Service (G) */
+    const nt = (mdDist && mdDist!==mdSrv) ? 'Servis di MD berbeda' : 'Servis di MD yang sama';
     out.push({
       f: mapPudLabel(pud),
       rk: rangka,
@@ -668,9 +691,9 @@ function mapGvizLossRows(json){
       ms: mdSrv,
       msn: mdSrvName || null,
       wo: cellText(c[8]) || null,
-      wod: parseGvizDateCell(c[9]),
+      wod: parseLossDate(c[9]),
       ah: cellText(c[10]) || null,
-      nt: cellText(c[12]) || null
+      nt
     });
   });
   return out;
@@ -1734,7 +1757,11 @@ function renderLossHeatmap(){
   data.forEach(r=>{ if(r.wod) monthSet.add(r.wod.slice(0,7)); });
   const months = [...monthSet].sort();
   const monthLabel = ym => {
-    const [y,m] = ym.split('-'); return MONTHS_SHORT[parseInt(m,10)-1]+" '"+y.slice(2);
+    const [y,m] = ym.split('-');
+    const mi = parseInt(m,10)-1;
+    /* Fallback ke string mentah kalau format tak dikenal — jangan pernah render "undefined" */
+    if(!y || isNaN(mi) || !MONTHS_SHORT[mi]) return ym;
+    return MONTHS_SHORT[mi]+" '"+String(y).slice(2);
   };
 
   /* Group: MD servis (ms) → jenis PUD → month → array of records */
