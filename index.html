@@ -729,6 +729,17 @@ const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt
 /* Palet soft/pastel untuk chart alasan deklarasi & matrix */
 const ACTION_COLORS = ['#7DD3FC','#93C5FD','#FCA5A5','#FDBA74','#C4B5FD','#CBD5E1','#F9A8D4'];
 const DEK_REASON_COLORS = ['#93C5FD','#FDBA74','#86EFAC','#FDE68A','#D8B4FE','#CBD5E1'];
+/* Warna TETAP per alasan deklarasi — dipakai oleh chart "Jenis PUD × Status Deklarasi"
+   dan "Rincian Alasan Deklarasi" supaya satu alasan selalu satu warna di kedua chart. */
+const REASON_COLOR_FIXED = {
+  'Tidak di Konsumen':'#93C5FD',
+  'Pindah Alamat':'#FDBA74',
+  'Menolak PUD':'#86EFAC',
+  'Rusak/Bencana':'#FDE68A',
+};
+function reasonColor(label, i){
+  return REASON_COLOR_FIXED[label] || DEK_REASON_COLORS[i % DEK_REASON_COLORS.length];
+}
 const STATUS_SHORT = {
   'Unit motor tidak di konsumen':'Tidak di Konsumen',
   'Konsumen sudah tidak tinggal di alamat terdaftar atau alamat rumah baru tidak diketahui':'Pindah Alamat',
@@ -1361,7 +1372,7 @@ function renderReason(data){
   if(wrap) wrap.style.display = '';
   charts.reason = new Chart(document.getElementById('reasonChart'),{
     type:'bar',
-    data:{ labels:entries.map(e=>e[0]), datasets:[{ data:entries.map(e=>e[1]), backgroundColor:ACTION_COLORS, borderRadius:6 }] },
+    data:{ labels:entries.map(e=>e[0]), datasets:[{ data:entries.map(e=>e[1]), backgroundColor:entries.map((e,i)=>reasonColor(e[0], i)), borderRadius:6 }] },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
       layout:{ padding:{right:70} },
       scales:{ x:{grid:{color:'#EEF0F3'}}, y:{grid:{display:false}, ticks:{font:{size:10.5}}} },
@@ -1498,7 +1509,7 @@ function renderDekReasonMatrix(data){
 
   const reasonLabels = [...new Set(rows.flatMap(r=>Object.keys(r.counts)))];
   const colorMap = {};
-  reasonLabels.forEach((label,i)=> colorMap[label] = DEK_REASON_COLORS[i % DEK_REASON_COLORS.length]);
+  reasonLabels.forEach((label,i)=> colorMap[label] = reasonColor(label, i));
 
   const datasets = reasonLabels.map(label=>({
     label,
