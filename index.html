@@ -391,7 +391,7 @@
     <div class="num">3</div>
     <div class="txt">
       <h2>Unit Loss PUD</h2>
-      <p>Unit PUD yang sudah masuk ke AHASS tapi tidak dikerjakan sebagai PUD.</p>
+      <p>Unit PUD yang sudah masuk ke AHASS tapi tidak dikerjakan sebagai PUD, terhitung 6 bulan terakhir</p>
     </div>
   </div>
 
@@ -405,7 +405,7 @@
       <div id="lossMDList" class="rank-scroll" style="margin-top:10px; max-height:340px;"></div>
     </div>
     <div class="card">
-      <h3>Top 15 AHASS dengan Loss Terbanyak</h3>
+      <h3>Top 10 AHASS dengan Loss Terbanyak</h3>
       <div class="sub">AHASS yang paling sering ada unit PUD masuk tapi tidak dikerjakan PUD — klik untuk lihat detail</div>
       <div id="lossAHASSEmpty" class="empty-note" style="display:none;">Tidak ada data pada filter saat ini.</div>
       <div id="lossAHASSList" class="rank-scroll" style="margin-top:10px; max-height:340px;"></div>
@@ -1696,7 +1696,7 @@ function renderLossAHASSRanking(data){
     byAH[r.ah].total++;
     byAH[r.ah].mds.add(r.ms);
   });
-  const rows = Object.values(byAH).sort((a,b)=>b.total-a.total).slice(0, 15);
+  const rows = Object.values(byAH).sort((a,b)=>b.total-a.total).slice(0, 10);
   if(!rows.length){ empty.style.display='block'; wrap.innerHTML=''; return; }
   empty.style.display='none';
   const max = Math.max(1, ...rows.map(r=>r.total));
