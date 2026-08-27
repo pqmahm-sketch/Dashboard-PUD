@@ -248,7 +248,7 @@
       <label class="fg-title">Cari Unit</label>
       <div class="search-box">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input id="unitSearch" placeholder="No. Rangka / No. Mesin / AHASS…" oninput="renderAll()">
+        <input id="unitSearch" placeholder="No. Rangka / No. Mesin / Kode AHASS (5 digit)…" oninput="renderAll()">
       </div>
     </div>
 
@@ -1043,8 +1043,16 @@ function getFiltered(){
     if(!activeFilters.mds.has(eff)) return false;
     if(activeFilters.region!=='all' && MD_REGION[eff]!==activeFilters.region) return false;
     if(q){
-      const hay = `${r.rk||''} ${r.ms||''} ${r.nah||''} ${r.ah||''}`.toLowerCase();
-      if(!hay.includes(q)) return false;
+      /* Query tepat 5 digit angka = mode kode AHASS: hanya dicocokkan ke kolom G (kode AHASS)
+         dan H (nama AHASS). Tanpa aturan ini, angka 5 digit ikut match ke No. Rangka/Mesin
+         sehingga unit "belum dikerjakan" milik AHASS lain bisa nyasar masuk hasil filter. */
+      if(/^\d{5}$/.test(q)){
+        const hay = `${r.ah||''} ${r.nah||''}`.toLowerCase();
+        if(!hay.includes(q)) return false;
+      } else {
+        const hay = `${r.rk||''} ${r.ms||''} ${r.nah||''} ${r.ah||''}`.toLowerCase();
+        if(!hay.includes(q)) return false;
+      }
     }
     return true;
   });
@@ -1629,8 +1637,14 @@ function getFilteredLoss(){
     if(!activeFilters.mds.has(r.ms)) return false;
     if(activeFilters.region!=='all' && MD_REGION[r.ms]!==activeFilters.region) return false;
     if(q){
-      const hay = `${r.rk||''} ${r.ah||''} ${r.wo||''}`.toLowerCase();
-      if(!hay.includes(q)) return false;
+      /* Konsisten dengan filter utama: query 5 digit = kode AHASS, hanya match kolom AHASS */
+      if(/^\d{5}$/.test(q)){
+        const hay = `${r.ah||''}`.toLowerCase();
+        if(!hay.includes(q)) return false;
+      } else {
+        const hay = `${r.rk||''} ${r.ah||''} ${r.wo||''}`.toLowerCase();
+        if(!hay.includes(q)) return false;
+      }
     }
     return true;
   });
